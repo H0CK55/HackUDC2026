@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "ClaveGal",
+  "version": "0.1",
+  "description": "Asistente de contraseñas",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/content.js"],
+      "css": ["content/badge.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "ClaveGal"
+  }
+}
