@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ClaveGal</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>ClaveGal</h1>
+      <p class="subtitle">Gestor de contraseñas seguras</p>
+    </header>
+
+    <section class="section">
+      <h2>Generar Contraseña</h2>
+      <div class="options">
+        <label>
+          <span>Longitud:</span>
+          <input type="number" id="length" value="16" min="8" max="64">
+        </label>
+        <label>
+          <input type="checkbox" id="uppercase" checked> Mayúsculas
+        </label>
+        <label>
+          <input type="checkbox" id="digits" checked> Números
+        </label>
+        <label>
+          <input type="checkbox" id="symbols" checked> Símbolos
+        </label>
+      </div>
+      <button id="btnGenerate" class="btn primary">Generar</button>
+      <div id="resultPassword" class="result"></div>
+    </section>
+
+    <section class="section">
+      <h2>Generar Passphrase</h2>
+      <div class="options">
+        <label>
+          <span>Palabras:</span>
+          <input type="number" id="wordCount" value="5" min="3" max="8">
+        </label>
+        <label>
+          <span>Idioma:</span>
+          <select id="lang">
+            <option value="es">Español</option>
+            <option value="en">English</option>
+          </select>
+        </label>
+      </div>
+      <button id="btnPassphrase" class="btn primary">Generar Passphrase</button>
+      <div id="resultPassphrase" class="result"></div>
+    </section>
+
+    <section class="section">
+      <h2>Verificar Contraseña</h2>
+      <input type="password" id="checkPassword" placeholder="Escribe una contraseña...">
+      <button id="btnCheck" class="btn secondary">Verificar</button>
+      <div id="resultCheck" class="result"></div>
+    </section>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

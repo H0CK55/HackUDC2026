@@ -22,26 +22,57 @@ function evaluateStrength(password) {
     return { score: 0, label: "Vacía", feedback: ["Introduce una contraseña."], crackTime: "instantáneo" };
   }
 
-  // zxcvbn debe estar cargado previamente (ver README)
-  const result = zxcvbn(password);
-
   const labels = ["Muy débil", "Débil", "Regular", "Fuerte", "Muy fuerte"];
   const colors = ["#e74c3c", "#e67e22", "#f1c40f", "#2ecc71", "#27ae60"];
 
-  const feedback = [];
-  if (result.feedback.warning) feedback.push("⚠️ " + result.feedback.warning);
-  result.feedback.suggestions.forEach(s => feedback.push("💡 " + s));
+  // Verificar si zxcvbn está disponible
+  if (typeof zxcvbn === "function") {
+    const result = zxcvbn(password);
 
-  // Tiempo estimado de cracking en modo offline lento
-  const crackTime = result.crack_times_display.offline_slow_hashing_1e4_per_second;
+    const feedback = [];
+    if (result.feedback.warning) feedback.push("⚠️ " + result.feedback.warning);
+    result.feedback.suggestions.forEach(s => feedback.push("💡 " + s));
+
+    const crackTime = result.crack_times_display.offline_slow_hashing_1e4_per_second;
+
+    return {
+      score: result.score,
+      label: labels[result.score],
+      color: colors[result.score],
+      feedback: feedback.length > 0 ? feedback : ["✅ Sin sugerencias adicionales."],
+      crackTime: crackTime,
+      entropy: Math.round(result.guesses_log10 * 3.32),
+    };
+  }
+
+  // Fallback: evaluación básica sin zxcvbn
+  const len = password.length;
+  const hasLower = /[a-z]/.test(password);
+  const hasUpper = /[A-Z]/.test(password);
+  const hasDigit = /[0-9]/.test(password);
+  const hasSymbol = /[^a-zA-Z0-9]/.test(password);
+  const variety = [hasLower, hasUpper, hasDigit, hasSymbol].filter(Boolean).length;
+
+  let score = 0;
+  if (len >= 8) score++;
+  if (len >= 12) score++;
+  if (variety >= 3) score++;
+  if (len >= 16 && variety >= 3) score++;
+
+  const feedback = [];
+  if (len < 8) feedback.push("💡 Usa al menos 8 caracteres.");
+  if (len < 12) feedback.push("💡 Considera usar 12+ caracteres.");
+  if (!hasUpper) feedback.push("💡 Añade mayúsculas.");
+  if (!hasDigit) feedback.push("💡 Añade números.");
+  if (!hasSymbol) feedback.push("💡 Añade símbolos (!@#$...)");
 
   return {
-    score: result.score,           // 0-4
-    label: labels[result.score],
-    color: colors[result.score],
-    feedback: feedback.length > 0 ? feedback : ["✅ Sin sugerencias adicionales."],
-    crackTime: crackTime,
-    entropy: Math.round(result.guesses_log10 * 3.32), // bits aprox.
+    score: Math.min(score, 4),
+    label: labels[Math.min(score, 4)],
+    color: colors[Math.min(score, 4)],
+    feedback: feedback.length > 0 ? feedback : ["✅ Contraseña aceptable."],
+    crackTime: "N/A (zxcvbn no cargado)",
+    entropy: Math.floor(len * Math.log2(variety * 26 || 26)),
   };
 }
 

@@ -25,10 +25,11 @@ import WORDLIST_ES, { WORDLIST_EN } from "../wordlist/wordlist.js";
  * Debe llamarse desde background.js: import "./persona2_handler.js"
  */
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  // Manejamos solo los mensajes de Persona 2
-  if (!message || !message.action) return false;
+  // Aceptamos tanto 'action' como 'type' para compatibilidad
+  const action = message?.action || message?.type;
+  if (!message || !action) return false;
 
-  switch (message.action) {
+  switch (action) {
 
     // ─── Verificar fortaleza ───────────────────────────────────────
     case "CHECK_STRENGTH": {
@@ -89,6 +90,59 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       } catch (e) {
         sendResponse({ ok: false, error: e.message });
       }
+      return false;
+    }
+
+    // ─── Verificar o crear contraseña (desde content script) ──────
+    case "VERIFY_OR_CREATE": {
+      const password = message.typed || "";
+      const domain = message.domain || "";
+
+      // Si no hay contraseña escrita, generamos una nueva
+      if (!password || password.length === 0) {
+        try {
+          const generated = generatePassword({ length: 16 });
+          // Enviamos respuesta al content script vía tabs.sendMessage
+          chrome.tabs.sendMessage(sender.tab.id, {
+            type: "CREATED",
+            data: {
+              password: generated.password,
+              domain: domain,
+              entropy: generated.entropy
+            }
+          });
+        } catch (e) {
+          chrome.tabs.sendMessage(sender.tab.id, {
+            type: "ERROR",
+            data: { message: e.message }
+          });
+        }
+        return false;
+      }
+
+      // Si hay contraseña, la verificamos
+      const strengthResult = evaluateStrength(password);
+      checkBreach(password)
+        .then(breachResult => {
+          chrome.tabs.sendMessage(sender.tab.id, {
+            type: "CHECK_RESULT",
+            data: {
+              strength: strengthResult,
+              pwned: breachResult.pwned,
+              breach: breachResult
+            }
+          });
+        })
+        .catch(e => {
+          chrome.tabs.sendMessage(sender.tab.id, {
+            type: "CHECK_RESULT",
+            data: {
+              strength: strengthResult,
+              pwned: null,
+              error: e.message
+            }
+          });
+        });
       return false;
     }
 
