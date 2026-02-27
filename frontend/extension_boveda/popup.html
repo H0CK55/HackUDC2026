@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: system-ui, sans-serif; width: 350px; margin: 0; padding: 15px; background: #121212; color: #ffffff; }
+        .card { background: #1e1e1e; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #333; }
+        input, button { display: block; width: 100%; margin: 8px 0; padding: 10px; box-sizing: border-box; border-radius: 4px; border: none; font-size: 13px; }
+        input { background: #2d2d2d; color: white; border: 1px solid #444; }
+        button { background: #2563eb; color: white; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        button:hover { background: #1d4ed8; }
+        #btnRegistrar { background: #4b5563; } #btnRegistrar:hover { background: #374151; }
+        #btnIniciar { background: #10b981; } #btnIniciar:hover { background: #059669; }
+        #btnGuardar { background: #f59e0b; color: black; } #btnGuardar:hover { background: #d97706; }
+        #btnDescargar { background: #8b5cf6; } #btnDescargar:hover { background: #7c3aed; }
+        pre { background: #000; color: #0f0; padding: 10px; border-radius: 4px; overflow-y: auto; max-height: 120px; font-size: 11px; border: 1px solid #333; margin:0;}
+        h2 { margin: 0 0 10px 0; color: #e5e7eb; font-size: 1rem; border-bottom: 1px solid #333; padding-bottom: 5px;}
+    </style>
+</head>
+<body>
+
+    <h2 style="text-align: center; color: #60a5fa; border:none;">🛡️ HackUDC Bóveda</h2>
+
+    <div class="card">
+        <input type="email" id="email" placeholder="Email (ej. admin@hack.com)" value="admin@hack.com">
+        <input type="password" id="masterPass" placeholder="Contraseña Maestra" value="SuperSecreto123">
+        <div style="display: flex; gap: 8px;">
+            <button id="btnRegistrar">Registrar</button>
+            <button id="btnIniciar">Iniciar Sesión</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <input type="text" id="secretData" placeholder="Ej: Netflix: hackudc2026">
+        <button id="btnGuardar">Guardar en BD</button>
+        <button id="btnDescargar">Descargar Bóveda</button>
+    </div>
+
+    <pre id="log">Sistema iniciado...</pre>
+
+    <script src="popup.js"></script>
+</body>
+</html>

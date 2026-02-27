@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "HackUDC Zero-Knowledge Vault",
+  "version": "1.0",
+  "description": "Gestor de contraseñas de máxima seguridad",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "http://localhost:8000/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Abrir Bóveda"
+  }
+}

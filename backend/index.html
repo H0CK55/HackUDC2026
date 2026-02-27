@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Zero-Knowledge Bóveda</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; background: #121212; color: #ffffff; }
+        .card { background: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 20px; border: 1px solid #333; }
+        input, button { display: block; width: 100%; margin: 10px 0; padding: 12px; box-sizing: border-box; border-radius: 4px; border: none; }
+        input { background: #2d2d2d; color: white; border: 1px solid #444; }
+        button { background: #2563eb; color: white; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        button:hover { background: #1d4ed8; }
+        pre { background: #000; color: #0f0; padding: 15px; border-radius: 4px; overflow-x: auto; max-height: 250px; font-size: 13px; border: 1px solid #333;}
+        h2 { margin-top: 0; color: #e5e7eb; font-size: 1.2rem; border-bottom: 1px solid #333; padding-bottom: 10px;}
+    </style>
+</head>
+<body>
+
+    <h1 style="text-align: center; color: #60a5fa;">🛡️ HackUDC Bóveda</h1>
+
+    <div class="card">
+        <h2>1. Autenticación (Zero-Knowledge)</h2>
+        <input type="email" id="email" placeholder="Tu Email (ej. admin@hack.com)" value="admin@hack.com">
+        <input type="password" id="masterPass" placeholder="Contraseña Maestra" value="SuperSecreto123">
+        <div style="display: flex; gap: 10px;">
+            <button onclick="registrar()" style="background: #4b5563;">Registrar</button>
+            <button onclick="iniciarSesion()" style="background: #10b981;">Iniciar Sesión</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>2. Gestionar Secretos</h2>
+        <input type="text" id="secretData" placeholder="Ej: Netflix: hackudc2026">
+        <button onclick="guardarItem()" style="background: #f59e0b; color: black;">Cifrar y Guardar en BD</button>
+        <button onclick="descargarBoveda()" style="background: #8b5cf6;">Descargar y Descifrar Bóveda</button>
+    </div>
+
+    <div class="card">
+        <h2>Consola Criptográfica</h2>
+        <pre id="log">Sistema iniciado. Esperando órdenes...</pre>
+    </div>
+
+<script>
+    const API_URL = "http://localhost:8000/api";
+    let SESSION_TOKEN = null;
+    let LOCAL_VK = null; 
+
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+
+    function buf2hex(buffer) { return [...new Uint8Array(buffer)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+    function hex2buf(hexString) { return new Uint8Array(hexString.match(/.{1,2}/g).map(byte => parseInt(byte, 16))); }
+    function logMsg(msg) { 
+        const logEl = document.getElementById('log');
+        logEl.innerText += "\n" + msg; 
+        logEl.scrollTop = logEl.scrollHeight; // Auto-scroll
+    }
+
+    // ==========================================
+    // MOTOR CRIPTOGRÁFICO
+    // ==========================================
+    async function derivarMEK(password, salt) {
+        const keyMaterial = await window.crypto.subtle.importKey("raw", encoder.encode(password), { name: "PBKDF2" }, false, ["deriveBits", "deriveKey"]);
+        const mekBuffer = await window.crypto.subtle.deriveBits({ name: "PBKDF2", salt: encoder.encode(salt), iterations: 100000, hash: "SHA-256" }, keyMaterial, 256);
+        return await window.crypto.subtle.importKey("raw", mekBuffer, { name: "AES-GCM" }, true, ["encrypt", "decrypt"]);
+    }
+
+    async function derivarMAH(mek) {
+        const mekBits = await window.crypto.subtle.exportKey("raw", mek);
+        const hmacKey = await window.crypto.subtle.importKey("raw", mekBits, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+        return buf2hex(await window.crypto.subtle.sign("HMAC", hmacKey, encoder.encode("autenticacion")));
+    }
+
+    // ==========================================
+    // 1. REGISTRO
+    // ==========================================
+    async function registrar() {
+        const email = document.getElementById('email').value;
+        const pass = document.getElementById('masterPass').value;
+        const newSalt = "sal_aleatoria_" + Date.now(); 
+        
+        logMsg("⚙️ Generando llaves maestras...");
+        const mek = await derivarMEK(pass, email + newSalt);
+        const mah = await derivarMAH(mek);
+        
+        LOCAL_VK = await window.crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
+        const vkBits = await window.crypto.subtle.exportKey("raw", LOCAL_VK);
+        
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));
+        const encryptedVKBuffer = await window.crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, mek, vkBits);
+        
+        logMsg("📤 Enviando datos cifrados a SQLite...");
+        const res = await fetch(`${API_URL}/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email, client_salt: newSalt, mah: mah, encrypted_vk: buf2hex(iv) + ":" + buf2hex(encryptedVKBuffer) })
+        });
+        
+        if(res.ok) logMsg("✅ Registro exitoso. Servidor no sabe tu contraseña.");
+        else logMsg("❌ Error: " + (await res.json()).detail);
+    }
+
+    // ==========================================
+    // 2. LOGIN PROFESIONAL (2 PASOS)
+    // ==========================================
+    async function iniciarSesion() {
+        const email = document.getElementById('email').value;
+        const pass = document.getElementById('masterPass').value;
+
+        logMsg("⏳ Obteniendo tu sal de seguridad del servidor...");
+        const resSalt = await fetch(`${API_URL}/salt/${email}`);
+        
+        if(!resSalt.ok) return logMsg("❌ Usuario no encontrado. Regístrate primero.");
+        const dataSalt = await resSalt.json();
+        
+        logMsg("🔐 Derivando llaves locales con la sal del servidor...");
+        const mek = await derivarMEK(pass, email + dataSalt.client_salt);
+        const mah = await derivarMAH(mek);
+        
+        const res = await fetch(`${API_URL}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email, mah: mah })
+        });
+
+        if(res.ok) {
+            const data = await res.json();
+            SESSION_TOKEN = data.access_token;
+            
+            const parts = data.encrypted_vk.split(":");
+            try {
+                const vkBuffer = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv: hex2buf(parts[0]) }, mek, hex2buf(parts[1]));
+                LOCAL_VK = await window.crypto.subtle.importKey("raw", vkBuffer, { name: "AES-GCM" }, true, ["encrypt", "decrypt"]);
+                logMsg("✅ ¡Login correcto! Bóveda abierta y lista en RAM.");
+            } catch(e) { logMsg("❌ Error descifrando la VK. Contraseña incorrecta."); }
+        } else { logMsg("❌ Credenciales incorrectas."); }
+    }
+
+    // ==========================================
+    // 3. GUARDAR ÍTEM CIFRADO
+    // ==========================================
+    async function guardarItem() {
+        if(!LOCAL_VK || !SESSION_TOKEN) return logMsg("❌ Inicia sesión primero.");
+        const secreto = document.getElementById('secretData').value;
+        if(!secreto) return logMsg("❌ Escribe un secreto primero.");
+        
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));
+        const cifradoBuffer = await window.crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, LOCAL_VK, encoder.encode(secreto));
+        
+        const res = await fetch(`${API_URL}/vault?token=${SESSION_TOKEN}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ encrypted_payload: buf2hex(cifradoBuffer), nonce: buf2hex(iv) })
+        });
+        
+        if(res.ok) logMsg(`🔒 Secreto cifrado con AES-GCM y guardado en SQLite.`);
+    }
+
+    // ==========================================
+    // 4. DESCARGAR Y DESCIFRAR
+    // ==========================================
+    async function descargarBoveda() {
+        if(!LOCAL_VK || !SESSION_TOKEN) return logMsg("❌ Inicia sesión primero.");
+        
+        const res = await fetch(`${API_URL}/vault?token=${SESSION_TOKEN}`);
+        if(res.ok) {
+            const items = await res.json();
+            logMsg(`⬇️ Bóveda descargada (${items.length} ítems). Descifrando...`);
+            
+            for(let item of items) {
+                try {
+                    const descifradoBuffer = await window.crypto.subtle.decrypt(
+                        { name: "AES-GCM", iv: hex2buf(item.nonce) }, 
+                        LOCAL_VK, 
+                        hex2buf(item.encrypted_payload)
+                    );
+                    logMsg(`🔓 Ítem [${item.id}]: ${decoder.decode(descifradoBuffer)}`);
+                } catch(e) { logMsg(`❌ Error descifrando ítem [${item.id}]`); }
+            }
+        }
+    }
+</script>
+</body>
+</html>
