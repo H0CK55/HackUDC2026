@@ -1,6 +1,7 @@
+import os
 from datetime import datetime, timedelta
 from typing import List, Optional
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import create_engine, Column, Integer, String, Text, ForeignKey
@@ -12,7 +13,10 @@ import jwt
 # 1. CONFIGURACIÓN Y SEGURIDAD
 # =====================================================================
 
-SECRET_KEY = "SUPER_SECRETO_DEL_SERVIDOR_CAMBIAR_EN_PRODUCCION"
+SECRET_KEY = os.environ.get("SECRET_KEY", "SUPER_SECRETO_DEL_SERVIDOR_CAMBIAR_EN_PRODUCCION")
+if SECRET_KEY == "SUPER_SECRETO_DEL_SERVIDOR_CAMBIAR_EN_PRODUCCION":
+    import warnings
+    warnings.warn("⚠️  Usando SECRET_KEY por defecto. Define la variable de entorno SECRET_KEY en producción.")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
 
@@ -94,9 +98,19 @@ def create_access_token(data: dict) -> str:
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-def get_current_user(token: str) -> str:
+def get_current_user(authorization: Optional[str] = Header(default=None), token: Optional[str] = None) -> str:
+    # Aceptar token en Authorization header (preferido) o en query param (legacy)
+    raw_token = None
+    if authorization and authorization.startswith("Bearer "):
+        raw_token = authorization.split(" ", 1)[1]
+    elif token:
+        raw_token = token
+    
+    if not raw_token:
+        raise HTTPException(status_code=401, detail="Token no proporcionado")
+    
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(raw_token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None: raise HTTPException(status_code=401, detail="Token inválido")
         return email
@@ -142,13 +156,11 @@ async def login(user: UserLogin, db: Session = Depends(get_db)):
     }
 
 @app.get("/api/vault", response_model=List[VaultItem])
-async def get_vault(token: str, db: Session = Depends(get_db)):
-    email = get_current_user(token)
+async def get_vault(db: Session = Depends(get_db), email: str = Depends(get_current_user)):
     return db.query(VaultItemDB).filter(VaultItemDB.user_email == email).all()
 
 @app.post("/api/vault")
-async def add_vault_item(item: VaultItem, token: str, db: Session = Depends(get_db)):
-    email = get_current_user(token)
+async def add_vault_item(item: VaultItem, db: Session = Depends(get_db), email: str = Depends(get_current_user)):
     new_item = VaultItemDB(user_email=email, encrypted_payload=item.encrypted_payload, nonce=item.nonce)
     db.add(new_item)
     db.commit()

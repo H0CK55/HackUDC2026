@@ -3,37 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: system-ui, sans-serif; width: 350px; margin: 0; padding: 15px; background: #121212; color: #ffffff; }
-        .card { background: #1e1e1e; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #333; }
-        input, button { display: block; width: 100%; margin: 8px 0; padding: 10px; box-sizing: border-box; border-radius: 4px; border: none; font-size: 13px; }
-        input { background: #2d2d2d; color: white; border: 1px solid #444; }
-        button { background: #2563eb; color: white; cursor: pointer; font-weight: bold; transition: 0.2s; }
-        button:hover { background: #1d4ed8; }
-        #btnRegistrar { background: #4b5563; } #btnRegistrar:hover { background: #374151; }
-        #btnIniciar { background: #10b981; } #btnIniciar:hover { background: #059669; }
-        #btnGuardar { background: #f59e0b; color: black; } #btnGuardar:hover { background: #d97706; }
-        #btnDescargar { background: #8b5cf6; } #btnDescargar:hover { background: #7c3aed; }
-        pre { background: #000; color: #0f0; padding: 10px; border-radius: 4px; overflow-y: auto; max-height: 120px; font-size: 11px; border: 1px solid #333; margin:0;}
-        h2 { margin: 0 0 10px 0; color: #e5e7eb; font-size: 1rem; border-bottom: 1px solid #333; padding-bottom: 5px;}
+        body { font-family: system-ui, sans-serif; width: 370px; margin: 0; padding: 15px; background: #0f1117; color: #ffffff; }
+        .card { background: #1a1d2e; padding: 15px; border-radius: 10px; margin-bottom: 12px; border: 1px solid #2a2d3e; }
+        h2.title { text-align: center; color: #60a5fa; border: none; margin: 0 0 14px 0; font-size: 1.1rem; letter-spacing: 0.5px; }
+        h3 { margin: 0 0 10px 0; color: #94a3b8; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #2a2d3e; padding-bottom: 6px; }
+        input { display: block; width: 100%; margin: 7px 0; padding: 10px; box-sizing: border-box; border-radius: 6px; border: 1px solid #2a2d3e; background: #252836; color: white; font-size: 13px; }
+        input:focus { outline: none; border-color: #60a5fa; }
+        .btn-row { display: flex; gap: 8px; }
+        button { padding: 10px; border-radius: 6px; border: none; font-size: 13px; font-weight: bold; cursor: pointer; transition: 0.15s; flex: 1; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        #btnRegistrar { background: #374151; color: #e5e7eb; } #btnRegistrar:hover:not(:disabled) { background: #4b5563; }
+        #btnIniciar { background: #10b981; color: white; } #btnIniciar:hover:not(:disabled) { background: #059669; }
+        #btnGuardar { background: #f59e0b; color: #1a1a1a; } #btnGuardar:hover:not(:disabled) { background: #d97706; }
+        #btnDescargar { background: #8b5cf6; color: white; } #btnDescargar:hover:not(:disabled) { background: #7c3aed; }
+        #btnComprobar { background: #ef4444; color: white; } #btnComprobar:hover:not(:disabled) { background: #dc2626; }
+
+        .badge { display: none; padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-top: 8px; }
+        .badge.danger { background: #450a0a; color: #fca5a5; border: 1px solid #ef4444; }
+        .badge.safe { background: #052e16; color: #86efac; border: 1px solid #22c55e; }
+
+        .info-box { font-size: 11px; color: #64748b; background: #0f1117; border: 1px solid #1e293b; border-radius: 6px; padding: 8px 10px; margin-top: 8px; line-height: 1.6; }
+        .info-box span { color: #38bdf8; }
+
+        pre#log { background: #000; color: #4ade80; padding: 10px; border-radius: 6px; overflow-y: auto; max-height: 130px; font-size: 11px; border: 1px solid #1e293b; margin: 0; line-height: 1.5; }
     </style>
 </head>
 <body>
 
-    <h2 style="text-align: center; color: #60a5fa; border:none;">🛡️ HackUDC Bóveda</h2>
+    <h2 class="title">🛡️ HackUDC Bóveda</h2>
 
+    <!-- Bloque 1: Autenticación -->
     <div class="card">
-        <input type="email" id="email" placeholder="Email (ej. admin@hack.com)" value="admin@hack.com">
+        <h3>Cuenta</h3>
+        <input type="email" id="email" placeholder="Email" value="admin@hack.com">
         <input type="password" id="masterPass" placeholder="Contraseña Maestra" value="SuperSecreto123">
-        <div style="display: flex; gap: 8px;">
+        <div class="btn-row">
             <button id="btnRegistrar">Registrar</button>
             <button id="btnIniciar">Iniciar Sesión</button>
         </div>
     </div>
 
+    <!-- Bloque 2: Breach Checking (HIBP) -->
     <div class="card">
-        <input type="text" id="secretData" placeholder="Ej: Netflix: hackudc2026">
-        <button id="btnGuardar">Guardar en BD</button>
-        <button id="btnDescargar">Descargar Bóveda</button>
+        <h3>🔍 Comprobar filtración (HIBP)</h3>
+        <input type="text" id="checkPassword" placeholder="Escribe una contraseña a comprobar...">
+        <button id="btnComprobar">Comprobar filtración</button>
+        <span id="breachBadge" class="badge"></span>
+        <div class="info-box">
+            🔒 <span>Privacidad garantizada:</span> solo se envían los primeros 5 caracteres
+            del hash SHA-1. Tu contraseña nunca sale del navegador (<span>k-anonymity</span>).
+        </div>
+    </div>
+
+    <!-- Bloque 3: Bóveda -->
+    <div class="card">
+        <h3>Bóveda</h3>
+        <input type="text" id="secretData" placeholder="Ej: Netflix: miPassword123">
+        <div class="btn-row">
+            <button id="btnGuardar">Guardar</button>
+            <button id="btnDescargar">Descargar Bóveda</button>
+        </div>
+        <div class="info-box">
+            ⚡ Al guardar, se comprueba automáticamente si la contraseña está filtrada.
+        </div>
     </div>
 
     <pre id="log">Sistema iniciado...</pre>
