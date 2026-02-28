@@ -8,6 +8,25 @@ let LOCAL_VK      = null;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
+// En producción (no localhost) la API debe ir por HTTPS; en local (localhost) HTTP vale
+function isLocalApi() {
+  try {
+    const u = new URL(API_URL);
+    return u.hostname === "localhost" || u.hostname === "127.0.0.1";
+  } catch { return true; }
+}
+function isInsecureProduction() {
+  return !isLocalApi() && API_URL.startsWith("http://");
+}
+/** Devuelve false si estamos en producción con HTTP (bloquea la petición). */
+function ensureSecureApi(feedbackId) {
+  if (!isInsecureProduction()) return true;
+  const msg = "En producción la API debe usar HTTPS. Edita config.js.";
+  if (feedbackId) showFeedback(feedbackId, "err", msg);
+  else logLine("⚠️ " + msg);
+  return false;
+}
+
 /* ─────────────────────────────────────────────
    UTILS: crypto helpers
 ───────────────────────────────────────────── */
@@ -268,6 +287,7 @@ $('btnIniciar').addEventListener('click', iniciarSesion);
 $('masterPass').addEventListener('keydown', e => { if (e.key === 'Enter') iniciarSesion(); });
 
 async function iniciarSesion() {
+  if (!ensureSecureApi('loginFeedback')) return;
   const btn   = $('btnIniciar');
   const email = $('email').value.trim();
   const pass  = $('masterPass').value;
@@ -339,11 +359,12 @@ async function iniciarSesion() {
 $('btnRegistrar').addEventListener('click', registrar);
 
 async function registrar() {
+  if (!ensureSecureApi('regFeedback')) return;
   const btn     = $('btnRegistrar');
   const email   = $('regEmail').value.trim();
   const pass    = $('regPass').value;
   const confirm = $('regPassConfirm').value;
-
+  
   hideFeedback('regFeedback');
   markInput($('regEmail'), null);
   markInput($('regPass'), null);
@@ -457,6 +478,7 @@ $('btnGuardar').addEventListener('click', guardarItem);
 $('sitePassConfirm').addEventListener('keydown', e => { if (e.key === 'Enter') guardarItem(); });
 
 async function guardarItem() {
+  if (!ensureSecureApi('step2Feedback')) return;
   if (!LOCAL_VK || !SESSION_TOKEN) {
     showFeedback('saveFeedback','err','Inicia sesión primero.');
     return;
@@ -530,6 +552,7 @@ $('btnDescargar').addEventListener('click', () => descargarBoveda());
 
 /** Refresca la lista de la bóveda (fetch + descifrar + render). silent = true no muestra loading ni logs. */
 async function refrescarListaBoveda(silent = false) {
+  if (!ensureSecureApi('step2Feedback')) return;
   if (!LOCAL_VK || !SESSION_TOKEN) return;
   const btn  = $('btnDescargar');
   const list = $('itemsList');
@@ -586,6 +609,7 @@ async function refrescarListaBoveda(silent = false) {
 }
 
 async function descargarBoveda() {
+  if (!ensureSecureApi('listFeedback')) return;
   if (!LOCAL_VK || !SESSION_TOKEN) {
     showFeedback('listFeedback','err','Inicia sesión primero.');
     return;
@@ -617,6 +641,7 @@ function renderItem(id, text, delay = 0) {
       ${displaySite}
       <span class="v-item-pass" data-pass="${escapeHtml(password)}" title="Clic para revelar">${maskedPass}</span>
     </span>
+    <button class="v-item-edit" title="Editar contraseña">✏️</button>
     <button class="v-item-copy" title="Copiar contraseña">⎘</button>
   `;
 
@@ -630,6 +655,11 @@ function renderItem(id, text, delay = 0) {
     passEl.style.color = revealed ? 'var(--accent2)' : '';
   });
 
+  // Editar contraseña
+  el.querySelector('.v-item-edit').addEventListener('click', () => {
+    openEditModal(id, site || text);
+  });
+
   // Copiar contraseña
   el.querySelector('.v-item-copy').addEventListener('click', async () => {
     await navigator.clipboard.writeText(password);
@@ -640,4 +670,99 @@ function renderItem(id, text, delay = 0) {
   });
 
   list.appendChild(el);
+}
+/* ─────────────────────────────────────────────
+   EDITAR CONTRASEÑA — MODAL
+───────────────────────────────────────────── */
+setupEye('eyeEditNew',     'editNewPass');
+setupEye('eyeEditConfirm', 'editNewPassConfirm');
+
+function openEditModal(itemId, site) {
+  $('editItemId').value = itemId;
+  $('editSiteLabel').textContent = `🌐 ${site}`;
+  $('editNewPass').value = '';
+  $('editNewPassConfirm').value = '';
+  hideFeedback('editFeedback');
+  markInput($('editNewPass'), null);
+  markInput($('editNewPassConfirm'), null);
+  $('editOverlay').classList.add('show');
+  $('editNewPass').focus();
+}
+
+function closeEditModal() {
+  $('editOverlay').classList.remove('show');
+}
+
+$('btnEditCancelar').addEventListener('click', closeEditModal);
+$('editOverlay').addEventListener('click', e => {
+  if (e.target === $('editOverlay')) closeEditModal();
+});
+
+$('btnEditGuardar').addEventListener('click', actualizarItem);
+$('editNewPassConfirm').addEventListener('keydown', e => { if (e.key === 'Enter') actualizarItem(); });
+
+async function actualizarItem() {
+  if (!LOCAL_VK || !SESSION_TOKEN) {
+    showFeedback('editFeedback', 'err', 'Sesión expirada. Inicia sesión de nuevo.');
+    return;
+  }
+  const btn     = $('btnEditGuardar');
+  const itemId  = $('editItemId').value;
+  const site    = $('editSiteLabel').textContent.replace('🌐 ', '').trim();
+  const newPass = $('editNewPass').value;
+  const confirm = $('editNewPassConfirm').value;
+
+  hideFeedback('editFeedback');
+  markInput($('editNewPass'), null);
+  markInput($('editNewPassConfirm'), null);
+
+  if (!newPass) {
+    showFeedback('editFeedback', 'err', 'Introduce la nueva contraseña.');
+    markInput($('editNewPass'), 'error');
+    shake($('editNewPass').closest('.v-field'));
+    return;
+  }
+  if (newPass !== confirm) {
+    showFeedback('editFeedback', 'err', 'Las contraseñas no coinciden.');
+    markInput($('editNewPassConfirm'), 'error');
+    shake($('editNewPassConfirm').closest('.v-field'));
+    return;
+  }
+
+  setLoading(btn, true);
+  logLine(`⚙️ Actualizando credencial de ${site}...`);
+
+  try {
+    const payload = JSON.stringify({ site, password: newPass });
+    const iv      = crypto.getRandomValues(new Uint8Array(12));
+    const cifrado = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv }, LOCAL_VK, encoder.encode(payload)
+    );
+
+    const res = await fetch(`${API_URL}/vault/${itemId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SESSION_TOKEN}`
+      },
+      body: JSON.stringify({ encrypted_payload: buf2hex(cifrado), nonce: buf2hex(iv) })
+    });
+
+    if (!res.ok) throw new Error('Error al actualizar en el servidor.');
+
+    markInput($('editNewPass'), 'success');
+    showFeedback('editFeedback', 'ok', 'Contraseña actualizada correctamente.');
+    logLine(`✅ Credencial de ${site} actualizada.`);
+
+    setTimeout(() => {
+      closeEditModal();
+      refrescarListaBoveda(true);
+    }, 1000);
+
+  } catch (err) {
+    showFeedback('editFeedback', 'err', err.message);
+    logLine(`❌ ${err.message}`);
+  } finally {
+    setLoading(btn, false);
+  }
 }
