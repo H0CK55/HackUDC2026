@@ -5,12 +5,33 @@ let LOCAL_VK      = null;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
+// En producción (no localhost) la API debe ir por HTTPS; en local (localhost) HTTP vale
+function isLocalApi() {
+  try {
+    const u = new URL(API_URL);
+    return u.hostname === "localhost" || u.hostname === "127.0.0.1";
+  } catch { return true; }
+}
+function isInsecureProduction() {
+  return !isLocalApi() && API_URL.startsWith("http://");
+}
+/** Devuelve false si estamos en producción con HTTP (bloquea la petición). */
+function ensureSecureApi(feedbackId) {
+  if (!isInsecureProduction()) return true;
+  const msg = "En producción la API debe usar HTTPS. Edita config.js.";
+  if (feedbackId) showFeedback(feedbackId, "err", msg);
+  else logLine("⚠️ " + msg);
+  return false;
+}
+
 function buf2hex(b) { return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2,'0')).join(''); }
 function hex2buf(h) {
-  if (typeof h !== 'string' || h.length === 0 || h.length % 2 !== 0 || !/^[0-9a-fA-F]+$/.test(h)) {
-    throw new Error('Formato hexadecimal inválido');
-  }
-  return new Uint8Array(h.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+  if (!h && h !== '') throw new Error('hex2buf: empty input');
+  const s = String(h).replace(/\s+/g, '');
+  if (s.length === 0) throw new Error('hex2buf: empty string');
+  if (s.length % 2 !== 0) throw new Error('hex2buf: odd-length hex string');
+  if (!/^[0-9a-fA-F]+$/.test(s)) throw new Error('hex2buf: invalid hex characters');
+  return new Uint8Array(s.match(/.{1,2}/g).map(b => parseInt(b, 16)));
 }
 
 async function derivarMEK(password, salt) {
@@ -322,6 +343,7 @@ $('btnIniciar').addEventListener('click', iniciarSesion);
 $('masterPass').addEventListener('keydown', e => { if (e.key === 'Enter') iniciarSesion(); });
 
 async function iniciarSesion() {
+  if (!ensureSecureApi('loginFeedback')) return;
   const btn   = $('btnIniciar');
   const email = $('email').value.trim();
   const pass  = $('masterPass').value;
@@ -392,11 +414,12 @@ async function iniciarSesion() {
 $('btnRegistrar').addEventListener('click', registrar);
 
 async function registrar() {
+  if (!ensureSecureApi('regFeedback')) return;
   const btn     = $('btnRegistrar');
   const email   = $('regEmail').value.trim();
   const pass    = $('regPass').value;
   const confirm = $('regPassConfirm').value;
-
+  
   hideFeedback('regFeedback');
   markInput($('regEmail'), null);
   markInput($('regPass'), null);
@@ -502,6 +525,7 @@ $('btnGuardar').addEventListener('click', guardarItem);
 $('sitePassConfirm').addEventListener('keydown', e => { if (e.key === 'Enter') guardarItem(); });
 
 async function guardarItem() {
+  if (!ensureSecureApi('step2Feedback')) return;
   if (!LOCAL_VK || !SESSION_TOKEN) {
     showFeedback('saveFeedback','err','Inicia sesión primero.');
     return;
@@ -571,6 +595,7 @@ $('btnDescargar').addEventListener('click', () => descargarBoveda());
 /** Refresca la bóveda: fetch cifrado → descifrar → render.
  *  silent=true omite indicadores de carga y logs de consola. */
 async function refrescarListaBoveda(silent = false) {
+  if (!ensureSecureApi('step2Feedback')) return;
   if (!LOCAL_VK || !SESSION_TOKEN) return;
   const btn  = $('btnDescargar');
   const list = $('itemsList');
@@ -627,6 +652,7 @@ async function refrescarListaBoveda(silent = false) {
 }
 
 async function descargarBoveda() {
+  if (!ensureSecureApi('listFeedback')) return;
   if (!LOCAL_VK || !SESSION_TOKEN) {
     showFeedback('listFeedback','err','Inicia sesión primero.');
     return;
