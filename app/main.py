@@ -11,13 +11,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Crea las tablas
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Zero-Knowledge Vault API")
 
-# CORS: por defecto "*" (desarrollo). En producción definir CORS_ORIGINS, ej.:
-# CORS_ORIGINS=https://tudominio.com,chrome-extension://abcdef
+# En producción definir CORS_ORIGINS: ej. "https://tudominio.com,chrome-extension://ID"
 cors_origins = os.getenv("CORS_ORIGINS", "").strip()
 allow_origins = [o.strip() for o in cors_origins.split(",") if o.strip()] if cors_origins else ["*"]
 
@@ -32,6 +30,5 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Incluimos los routers
 app.include_router(users.router)
 app.include_router(vault.router)

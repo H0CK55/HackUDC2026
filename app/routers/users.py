@@ -28,7 +28,6 @@ async def register(
     db: Session = Depends(get_db),
     _: None = Depends(_rate_limit_auth_dep),
 ):
-    # normalize email to lowercase to avoid dupes
     email = user.email.strip().lower()
     if db.query(UserDB).filter(UserDB.email == email).first():
         raise HTTPException(status_code=400, detail="El usuario ya existe")
@@ -51,12 +50,11 @@ async def get_salt(
     db: Session = Depends(get_db),
     _: None = Depends(_rate_limit_salt_dep),
 ):
-    # Misma respuesta 200 si existe o no (evita enumeración de usuarios)
+    # Respuesta idéntica exista o no el usuario (evita enumeración por timing/contenido)
     normalized = email.strip().lower()
     user = db.query(UserDB).filter(UserDB.email == normalized).first()
     if user:
         return {"client_salt": user.client_salt}
-    # Usuario no existe: devolver salt aleatorio para que login falle después sin revelar nada
     return {"client_salt": secrets.token_hex(32)}
 
 @router.post("/login")
@@ -66,7 +64,6 @@ async def login(
     db: Session = Depends(get_db),
     _: None = Depends(_rate_limit_auth_dep),
 ):
-    # normalize email like register
     email = user.email.strip().lower()
     db_user = db.query(UserDB).filter(UserDB.email == email).first()
     if not db_user:

@@ -549,6 +549,9 @@
     .v-item-pass { font-size: 12px; color: var(--muted); letter-spacing: .1em; transition: color .2s; }
     .v-item-pass:hover { color: var(--text); }
 
+    /* Botones secundarios (Cancelar, Volver) con ancho natural sin flex-grow */
+    .v-btn-auto { flex: none; white-space: nowrap; }
+
     /* ── BREACH BADGE (HIBP) ───────────────────────────────── */
     .v-breach {
       display: none; align-items: center; gap: 6px;
@@ -692,7 +695,7 @@
         <div class="v-feedback" id="step2Feedback"></div>
 
         <div class="v-btn-row">
-          <button class="v-btn v-btn-ghost" id="btnVolver" style="flex:0;padding:10px 14px;">&larr; Volver</button>
+          <button class="v-btn v-btn-ghost v-btn-auto" id="btnVolver">&larr; Volver</button>
           <button class="v-btn v-btn-warn" id="btnGuardar">
             <span class="spinner"></span>
             <span class="btn-text">&#x1F512; Cifrar y guardar</span>
@@ -709,7 +712,7 @@
 
       <div style="display:flex; align-items:center; justify-content:space-between;">
         <span class="v-label">Secretos almacenados</span>
-        <button class="v-btn v-btn-success" id="btnDescargar" style="flex:0;padding:4px 10px;font-size:11px;">
+        <button class="v-btn v-btn-success v-btn-auto" id="btnDescargar" style="padding:4px 10px;font-size:11px;">
           <span class="spinner"></span>
           <span class="btn-text">↓ Cargar</span>
         </button>
@@ -739,7 +742,7 @@
 
       <div class="v-field">
         <span class="v-field-icon">🔑</span>
-        <input class="v-input" id="regPass" type="password" placeholder="Contraseña maestra" id="regPass">
+        <input class="v-input" id="regPass" type="password" placeholder="Contraseña maestra">
         <button class="v-eye" id="eyeToggleReg" type="button">👁</button>
       </div>
 
@@ -786,7 +789,7 @@
       </div>
       <div class="v-feedback" id="editFeedback"></div>
       <div class="v-btn-row">
-        <button class="v-btn v-btn-ghost" id="btnEditCancelar" style="flex:0;padding:10px 14px;">Cancelar</button>
+        <button class="v-btn v-btn-ghost v-btn-auto" id="btnEditCancelar">Cancelar</button>
         <button class="v-btn v-btn-warn" id="btnEditGuardar">
           <span class="spinner"></span>
           <span class="btn-text">🔒 Guardar cambio</span>
