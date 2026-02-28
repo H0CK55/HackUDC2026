@@ -5,7 +5,6 @@ let LOCAL_VK      = null;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-// En producción (no localhost) la API debe ir por HTTPS; en local (localhost) HTTP vale
 function isLocalApi() {
   try {
     const u = new URL(API_URL);
@@ -15,7 +14,6 @@ function isLocalApi() {
 function isInsecureProduction() {
   return !isLocalApi() && API_URL.startsWith("http://");
 }
-/** Devuelve false si estamos en producción con HTTP (bloquea la petición). */
 function ensureSecureApi(feedbackId) {
   if (!isInsecureProduction()) return true;
   const msg = "En producción la API debe usar HTTPS. Edita config.js.";
@@ -282,8 +280,6 @@ function applyDomain(domain) {
   updateSaveSectionVisibility();
 }
 
-// Primero pendingDomain (inyectado por content.js al clicar el badge en la página),
-// si no hay, se lee la URL de la pestaña activa como fallback.
 chrome.storage.local.get('pendingDomain', ({ pendingDomain }) => {
   if (pendingDomain) {
     applyDomain(pendingDomain);
@@ -394,9 +390,13 @@ async function iniciarSesion() {
     markInput($('masterPass'), 'success');
     showFeedback('loginFeedback','ok','Bóveda desbloqueada correctamente.');
     logLine('✅ Login OK — Bóveda abierta.');
+    $('itemsList').innerHTML = '';
     unlockVaultUI();
 
-    setTimeout(() => { document.querySelector('[data-tab="vault"]').click(); }, 900);
+    setTimeout(() => {
+      document.querySelector('[data-tab="vault"]').click();
+      refrescarListaBoveda(true);
+    }, 900);
 
   } catch (err) {
     markInput($('masterPass'), 'error');
@@ -592,18 +592,17 @@ async function guardarItem() {
 
 $('btnDescargar').addEventListener('click', () => descargarBoveda());
 
-/** Refresca la bóveda: fetch cifrado → descifrar → render.
- *  silent=true omite indicadores de carga y logs de consola. */
 async function refrescarListaBoveda(silent = false) {
   if (!ensureSecureApi('step2Feedback')) return;
   if (!LOCAL_VK || !SESSION_TOKEN) return;
   const btn  = $('btnDescargar');
   const list = $('itemsList');
 
+  hideFeedback('listFeedback');
+  list.innerHTML = '';
+
   if (!silent) {
     setLoading(btn, true);
-    hideFeedback('listFeedback');
-    list.innerHTML = '';
     logLine('⬇️ Descargando bóveda cifrada...');
   }
 

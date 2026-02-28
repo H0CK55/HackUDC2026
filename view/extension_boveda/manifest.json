@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "HackUDC Zero-Knowledge Vault",
+  "name": "VoidVault",
   "version": "1.2.2",
-  "description": "Gestor de contraseñas de máxima seguridad — Gradiant 2026",
+  "description": "Gestor de contraseñas zero-knowledge — cifrado en tu dispositivo",
   "action": {
-    "default_title": "Abrir Bóveda",
+    "default_title": "VoidVault",
     "default_popup": "popup.html"
   },
   "background": {

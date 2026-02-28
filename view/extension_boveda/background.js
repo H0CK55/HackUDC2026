@@ -1,4 +1,4 @@
-// background.js — Service Worker HackUDC Vault
+// background.js — Service Worker VoidVault
 
 const API_URL = "http://localhost:8000/api";
 const _dec = new TextDecoder();

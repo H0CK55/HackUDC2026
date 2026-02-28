@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HackUDC Vault</title>
+  <title>VoidVault</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -67,13 +67,12 @@
 
     /* ── WRAPPER ───────────────────────────────────────────── */
     .vault-wrap {
-      position: relative; 
+      position: relative;
       z-index: 1;
-      padding-bottom: 150px; /* IMPORTANTE: Deja espacio para la terminal fija */
-      display: flex; 
-      flex-direction: column; 
+      padding-bottom: 150px;
+      display: flex;
+      flex-direction: column;
       gap: 0;
-      /* Agrandar ligeramente la UI y textos en conjunto (útil para extensiones Chromium) */
       zoom: 1.1;
     }
 
@@ -373,32 +372,13 @@
     }
 
     /* ── LOG CONSOLE ───────────────────────────────────────── */
-    /* ── LOG CONSOLE (FIJA AL FONDO) ───────────────────────── */
-  .v-console-wrap {
-    position: fixed;   /* Cambiado de static/relative a fixed */
-    bottom: 0;         /* Pegada al fondo */
-    left: 0;           /* Alineada a la izquierda */
-    right: 0;          /* Alineada a la derecha para ocupar todo el ancho */
-    margin: 0;         /* Quitamos márgenes para que encaje perfecta */
-    border: none;
-    border-top: 1px solid var(--border-hi); /* Borde superior más brillante */
-    z-index: 1000;     /* Aseguramos que esté por encima de todo */
-    background: var(--bg);
-    animation: none;   /* Opcional: quitar animación para que no "baile" al cargar */
-  }
-
-  .v-console {
-    background: #050810;
-    color: #00ff9d;
-    font-family: var(--mono);
-    font-size: 11px;
-    line-height: 1.6;
-    padding: 10px 12px;
-    height: 115px;      /* Altura fija cómoda */
-    overflow-y: auto;
-    white-space: pre-wrap;
-    word-break: break-all;
-  }
+    .v-console-wrap {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      border-top: 1px solid var(--border-hi);
+      z-index: 1000;
+      background: var(--bg);
+    }
     .v-console-bar {
       display: flex; align-items: center; gap: 6px;
       padding: 6px 10px;
@@ -637,8 +617,8 @@
   <header class="v-header">
     <div class="v-logo">🛡️</div>
     <div class="v-header-text">
-      <div class="v-title">ZK · Vault</div>
-      <div class="v-subtitle">HACKUDC · GRADIANT 2026</div>
+      <div class="v-title">VoidVault</div>
+      <div class="v-subtitle">ZERO-KNOWLEDGE · 2026</div>
     </div>
     <div class="v-status-pill" id="statusPill">
       <span class="v-status-dot" id="statusDot"></span>
@@ -865,7 +845,7 @@
   <div class="v-console-wrap">
     <div class="v-console-bar">
       <span class="v-console-dot"></span>
-      TERMINAL · ZERO-KNOWLEDGE LOG
+      TERMINAL · VOIDVAULT
     </div>
     <div class="v-console" id="log">Sistema iniciado...</div>
   </div>
