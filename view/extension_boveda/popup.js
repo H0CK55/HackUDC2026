@@ -295,7 +295,6 @@ setupEye('eyeSitePass',       'sitePass');
 
 $('sitePass').addEventListener('input', () => {
   checkBreachSite($('sitePass').value);
-  $('btnConfirmarGenerada').style.display = 'none';
 });
 $('editNewPass').addEventListener('input', () => checkBreachEdit($('editNewPass').value));
 
@@ -603,7 +602,6 @@ async function guardarItem() {
       $('sitePass').value = '';
       markInput($('sitePass'), null);
       hideBreachBadge('breachBadge');
-      $('btnConfirmarGenerada').style.display = 'none';
       hideFeedback('step1Feedback');
       updateSaveSectionVisibility();
       refrescarListaBoveda(true);
@@ -915,16 +913,10 @@ function generarPassword() {
   const rnd = crypto.getRandomValues(new Uint8Array(16));
   const password = Array.from(rnd, b => chars[b % chars.length]).join('');
   setNativeValue($('sitePass'), password);
-  $('btnConfirmarGenerada').style.display = 'flex';
-  $('btnConfirmarGenerada').focus();
+  logLine('⚡ Contraseña generada.');
 }
 
-$('btnConfirmarGenerada').addEventListener('click', () => {
-  const pass = $('sitePass').value;
-  if (!pass) return;
-  $('btnConfirmarGenerada').style.display = 'none';
-  logLine('✅ Contraseña generada confirmada.');
-});
+
 
 function setNativeValue(input, value) {
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
