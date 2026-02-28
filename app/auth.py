@@ -3,12 +3,6 @@ import bcrypt
 import jwt
 from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
-from dotenv import load_dotenv # <--- Añadido
-from pathlib import Path
-
-# Cargar variables de entorno desde el archivo .env
-env_path = Path(__file__).parent.parent / ".env"
-load_dotenv(dotenv_path=env_path)
 
 # Configuración desde entorno con fallbacks de seguridad
 SECRET_KEY = os.getenv("SECRET_KEY")

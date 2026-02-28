@@ -67,9 +67,14 @@
 
     /* ── WRAPPER ───────────────────────────────────────────── */
     .vault-wrap {
-      position: relative; z-index: 1;
-      padding: 0 0 12px;
-      display: flex; flex-direction: column; gap: 0;
+      position: relative; 
+      z-index: 1;
+      padding-bottom: 150px; /* IMPORTANTE: Deja espacio para la terminal fija */
+      display: flex; 
+      flex-direction: column; 
+      gap: 0;
+      /* Agrandar ligeramente la UI y textos en conjunto (útil para extensiones Chromium) */
+      zoom: 1.1;
     }
 
     /* ── HEADER ────────────────────────────────────────────── */
@@ -242,15 +247,16 @@
     .v-btn-row { display: flex; gap: 8px; }
 
     .v-btn {
-      flex: 1; padding: 10px 12px;
+      flex: 1; min-height: 42px; padding: 12px 14px;
       border-radius: 8px; border: 1px solid transparent;
-      font-family: var(--ui); font-size: 13px; font-weight: 700;
-      letter-spacing: .06em; text-transform: uppercase;
+      font-family: var(--ui); font-size: 14px; font-weight: 700;
+      letter-spacing: .05em; text-transform: uppercase;
       cursor: pointer; position: relative; overflow: hidden;
       transition: transform var(--speed) var(--ease),
                   box-shadow var(--speed) var(--ease),
                   background var(--speed), border-color var(--speed);
     }
+    .v-btn .btn-text { font-size: inherit; }
     .v-btn::before {
       content: ''; position: absolute; inset: 0;
       background: rgba(255,255,255,.06);
@@ -319,8 +325,8 @@
     /* ── INLINE FEEDBACK ───────────────────────────────────── */
     .v-feedback {
       display: none; align-items: center; gap: 6px;
-      padding: 8px 12px; border-radius: 8px;
-      font-size: 12px; letter-spacing: .03em;
+      padding: 10px 12px; border-radius: 8px;
+      font-size: 13px; letter-spacing: .03em;
       animation: feedbackIn .25s var(--ease) both;
     }
     @keyframes feedbackIn {
@@ -367,12 +373,32 @@
     }
 
     /* ── LOG CONSOLE ───────────────────────────────────────── */
-    .v-console-wrap {
-      margin: 8px 16px 0;
-      border: 1px solid var(--border);
-      border-radius: 8px; overflow: hidden;
-      animation: fadeDown .45s .2s var(--ease) both;
-    }
+    /* ── LOG CONSOLE (FIJA AL FONDO) ───────────────────────── */
+  .v-console-wrap {
+    position: fixed;   /* Cambiado de static/relative a fixed */
+    bottom: 0;         /* Pegada al fondo */
+    left: 0;           /* Alineada a la izquierda */
+    right: 0;          /* Alineada a la derecha para ocupar todo el ancho */
+    margin: 0;         /* Quitamos márgenes para que encaje perfecta */
+    border: none;
+    border-top: 1px solid var(--border-hi); /* Borde superior más brillante */
+    z-index: 1000;     /* Aseguramos que esté por encima de todo */
+    background: var(--bg);
+    animation: none;   /* Opcional: quitar animación para que no "baile" al cargar */
+  }
+
+  .v-console {
+    background: #050810;
+    color: #00ff9d;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.6;
+    padding: 10px 12px;
+    height: 115px;      /* Altura fija cómoda */
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
     .v-console-bar {
       display: flex; align-items: center; gap: 6px;
       padding: 6px 10px;
@@ -440,9 +466,9 @@
 
     .v-item {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 8px 12px;
+      padding: 10px 12px;
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: 6px; font-size: 11px; color: var(--text);
+      border-radius: 6px; font-size: 12px; color: var(--text);
       animation: itemIn .25s var(--ease) both;
       gap: 8px;
     }
@@ -453,38 +479,11 @@
     .v-item-val { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .v-item-copy {
       background: none; border: 1px solid var(--border);
-      color: var(--muted); border-radius: 4px; padding: 2px 6px;
-      font-size: 10px; cursor: pointer; flex-shrink: 0;
+      color: var(--muted); border-radius: 4px; padding: 4px 8px;
+      font-size: 12px; cursor: pointer; flex-shrink: 0;
       transition: color var(--speed), border-color var(--speed);
     }
     .v-item-copy:hover { color: var(--accent); border-color: var(--border-hi); }
-
-    .v-item-edit {
-      background: none; border: 1px solid var(--border);
-      color: var(--muted); border-radius: 4px; padding: 2px 6px;
-      font-size: 10px; cursor: pointer; flex-shrink: 0;
-      transition: color var(--speed), border-color var(--speed);
-    }
-    .v-item-edit:hover { color: var(--warn); border-color: rgba(255,170,0,.4); }
-
-    /* Modal de edición */
-    .v-edit-overlay {
-      display: none; position: fixed; inset: 0; z-index: 999;
-      background: rgba(5,8,16,.88);
-      align-items: center; justify-content: center;
-    }
-    .v-edit-overlay.show { display: flex; animation: panelIn .25s var(--ease) both; }
-    .v-edit-modal {
-      width: 340px; background: var(--surface2);
-      border: 1px solid var(--border-hi); border-radius: 12px;
-      padding: 20px; display: flex; flex-direction: column; gap: 12px;
-      box-shadow: 0 0 40px rgba(0,200,255,.15);
-    }
-    .v-edit-modal h3 {
-      font-family: var(--ui); font-size: 14px; font-weight: 700;
-      color: var(--text-hi); letter-spacing: .08em; text-transform: uppercase;
-    }
-    .v-edit-site-label { font-size: 11px; color: var(--accent); letter-spacing: .04em; }
 
     /* ── LOCK SCREEN ───────────────────────────────────────── */
     .v-locked-banner {
@@ -521,7 +520,7 @@
     }
     .v-step-line.active { background: var(--accent2); box-shadow: 0 0 6px rgba(0,255,157,.3); }
     .v-step-label {
-      font-size: 10px; color: var(--muted); letter-spacing: .08em;
+      font-size: 11px; color: var(--muted); letter-spacing: .08em;
       text-transform: uppercase; white-space: nowrap;
     }
 
@@ -545,9 +544,55 @@
 
 
     .v-item-val { display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
-    .v-item-site { font-size: 10px; color: var(--accent); letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .v-item-pass { font-size: 12px; color: var(--muted); letter-spacing: .1em; transition: color .2s; }
+    .v-item-site { font-size: 12px; color: var(--accent); letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .v-item-pass { font-size: 13px; color: var(--muted); letter-spacing: .1em; transition: color .2s; }
     .v-item-pass:hover { color: var(--text); }
+
+    /* --- ESTILOS PARA EL MODAL DE EDICIÓN --- */
+.v-edit-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 8, 16, 0.95); /* Fondo oscuro semitransparente */
+  backdrop-filter: blur(4px);      /* Efecto de desenfoque */
+  z-index: 1000;                   /* Por encima de todo */
+  display: none;                   /* OCULTO POR DEFECTO */
+  place-items: center;
+  padding: 20px;
+}
+
+/* Esta clase es la que activa el JS al hacer clic en el lápiz */
+.v-edit-overlay.show {
+  display: grid; 
+}
+
+.v-edit-modal {
+  background: var(--surface2);
+  border: 1px solid var(--border-hi);
+  border-radius: 12px;
+  padding: 24px;
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+}
+
+.v-edit-modal h3 {
+  font-family: var(--ui);
+  font-size: 16px;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+#editSiteLabel {
+  font-size: 12px;
+  color: var(--accent2);
+  background: rgba(0, 255, 157, 0.05);
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 255, 157, 0.1);
+}
 
   </style>
 </head>
@@ -678,7 +723,7 @@
         <div class="v-feedback" id="step2Feedback"></div>
 
         <div class="v-btn-row">
-          <button class="v-btn v-btn-ghost" id="btnVolver" style="flex:0;padding:10px 14px;">&larr; Volver</button>
+          <button class="v-btn v-btn-ghost" id="btnVolver" style="flex:0;min-width:90px;">&larr; Volver</button>
           <button class="v-btn v-btn-warn" id="btnGuardar">
             <span class="spinner"></span>
             <span class="btn-text">&#x1F512; Cifrar y guardar</span>
@@ -695,7 +740,7 @@
 
       <div style="display:flex; align-items:center; justify-content:space-between;">
         <span class="v-label">Secretos almacenados</span>
-        <button class="v-btn v-btn-success" id="btnDescargar" style="flex:0;padding:4px 10px;font-size:11px;">
+        <button class="v-btn v-btn-success" id="btnDescargar" style="flex:0;min-width:100px;">
           <span class="spinner"></span>
           <span class="btn-text">↓ Cargar</span>
         </button>
@@ -752,7 +797,6 @@
 
   </section>
 
-
   <!-- ── MODAL EDITAR CONTRASEÑA ──────────────────────────── -->
   <div class="v-edit-overlay" id="editOverlay">
     <div class="v-edit-modal">
@@ -771,7 +815,7 @@
       </div>
       <div class="v-feedback" id="editFeedback"></div>
       <div class="v-btn-row">
-        <button class="v-btn v-btn-ghost" id="btnEditCancelar" style="flex:0;padding:10px 14px;">Cancelar</button>
+        <button class="v-btn v-btn-ghost" id="btnEditCancelar">Cancelar</button>
         <button class="v-btn v-btn-warn" id="btnEditGuardar">
           <span class="spinner"></span>
           <span class="btn-text">🔒 Guardar cambio</span>
