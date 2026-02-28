@@ -73,6 +73,8 @@
       display: flex; 
       flex-direction: column; 
       gap: 0;
+      /* Agrandar ligeramente la UI y textos en conjunto (útil para extensiones Chromium) */
+      zoom: 1.1;
     }
 
     /* ── HEADER ────────────────────────────────────────────── */
@@ -813,7 +815,7 @@
       </div>
       <div class="v-feedback" id="editFeedback"></div>
       <div class="v-btn-row">
-        <button class="v-btn v-btn-ghost" id="btnEditCancelar" style="flex:0;padding:10px 14px;">Cancelar</button>
+        <button class="v-btn v-btn-ghost" id="btnEditCancelar">Cancelar</button>
         <button class="v-btn v-btn-warn" id="btnEditGuardar">
           <span class="spinner"></span>
           <span class="btn-text">🔒 Guardar cambio</span>
