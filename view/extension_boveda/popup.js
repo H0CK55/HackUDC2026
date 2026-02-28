@@ -780,6 +780,8 @@ function renderItem(id, text, delay = 0) {
     passEl.style.color = revealed ? 'var(--accent2)' : '';
   });
 
+//Paula
+
   el.querySelector('.v-item-edit').addEventListener('click', () => {
     openEditModal(id, site || text);
   });
