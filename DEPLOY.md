@@ -2,15 +2,26 @@
 
 ## Arrancar con Docker (local)
 
+**Linux / Mac:**
 ```bash
-# Desde la raíz del proyecto
-sudo docker build -t vault-api .
-sudo docker run -p 8000:8000 \
+docker build -t vault-api .
+docker run -p 8000:8000 \
   -e SECRET_KEY="$(openssl rand -hex 32)" \
   -e DATABASE_URL="sqlite:////data/vault.db" \
   -v vault-data:/data \
   vault-api
 ```
+
+**Windows** (PowerShell o CMD; con [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado):
+```powershell
+docker build -t vault-api .
+docker run -p 8000:8000 -e SECRET_KEY=clave_secreta_larga_para_desarrollo -e DATABASE_URL="sqlite:////data/vault.db" -v vault-data:/data vault-api
+```
+No hace falta `sudo`. Para generar una clave aleatoria en PowerShell: `-join ((48..57) + (97..102) | Get-Random -Count 32 | % {[char]$_})` (o usa cualquier string largo para desarrollo).
+
+**Si en Linux sale "permission denied"** con docker: usa `sudo docker ...` o añade tu usuario al grupo docker: `sudo usermod -aG docker $USER` y cierra/abre sesión.
+
+---
 
 API en **http://localhost:8000**. La extensión ya apunta ahí por defecto.
 
