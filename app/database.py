@@ -1,26 +1,21 @@
 import os
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-# En producción usar DATABASE_URL (ej. postgresql://... o sqlite:////data/vault.db)
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./vault.db")
-# key used by SQLCipher (must match the file key when creating/opening the DB)
-DB_KEY = os.getenv("DATABASE_KEY")
+# URL por defecto para Docker: postgresql://user:pass@db:5432/vault
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/vault")
 
-connect_args = {} if "sqlite" not in SQLALCHEMY_DATABASE_URL else {"check_same_thread": False}
+# PostgreSQL no necesita check_same_thread (solo SQLite)
+connect_args = {}
+if "sqlite" in SQLALCHEMY_DATABASE_URL:
+    connect_args = {"check_same_thread": False}
+
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args=connect_args)
 
-# If DATABASE_KEY is provided and we're using sqlite, configure SQLCipher PRAGMA
-if DB_KEY and "sqlite" in SQLALCHEMY_DATABASE_URL:
-    @event.listens_for(engine, "connect")
-    def _set_sqlcipher_pragma(dbapi_connection, connection_record):
-        # this will be executed on each new raw connection
-        cursor = dbapi_connection.cursor()
-        # Escape single quotes in DB_KEY to avoid breaking the PRAGMA string
-        safe_key = DB_KEY.replace("'", "''")
-        cursor.execute("PRAGMA key = '%s';" % safe_key)
-        cursor.close()
+# Nota: Se elimina la lógica de PRAGMA key ya que Postgres no usa SQLCipher.
+# El Zero-Knowledge se mantiene por el cifrado en el cliente/app.
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

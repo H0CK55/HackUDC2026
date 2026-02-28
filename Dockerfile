@@ -25,7 +25,9 @@ ENV PYTHONUNBUFFERED=1
 
 # Crear usuario no-root para ejecutar la aplicación
 RUN groupadd -r vault || true && useradd -r -g vault -d /app -s /sbin/nologin vault || true \
-    && chown -R vault:vault /app /app/scripts || true
+    # preparar directorio de datos montable para sqlite
+    && mkdir -p /data \
+    && chown -R vault:vault /app /app/scripts /data || true
 USER vault
 
 EXPOSE 8000
@@ -38,7 +40,10 @@ except Exception: sys.exit(1)"
 # Ejecutar el script de inicialización (genera .env si falta) y a continuación
 # lanzar la aplicación. El script puede ejecutarse múltiples veces sin dañar
 # nada, ya que no reescribe el .env a menos que se le pase --force.
-ENTRYPOINT ["/bin/bash","-c","/app/scripts/init_env.sh || true && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+ENTRYPOINT ["/bin/bash","-c","/app/scripts/init_env.sh || true && \
+# ensure data directory is writable before starting
+if [ ! -w \"/data\" ]; then echo \"ERROR: /data is not writable\" >&2; exit 1; fi && \
+exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
 
 # CMD queda como respaldo si se quiere ejecutar directamente uvicorn sin bash.CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 

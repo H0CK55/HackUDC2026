@@ -1,3 +1,14 @@
+*.pyc
+__pycache__/
+.venv/
+.env
+vault.db
+*.sqlite
+data/
+/.mypy_cache
+env/
+*.egg-info
+dist/
 .env
 .env.*
 !.env.example

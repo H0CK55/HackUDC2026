@@ -20,6 +20,10 @@ fi
 
 echo "Generating .env at $ENV_FILE"
 
+# Make sure the file is created with restrictive permissions by default
+# (umask 077 -> files created as 600). We still chmod later to be explicit.
+umask 077
+
 # SECRET_KEY: 32-byte hex
 SECRET_KEY=$(openssl rand -hex 32 2>/dev/null || python - <<'PY'
 import os,sys
@@ -48,5 +52,8 @@ EOF
 
 echo ".env created. Keep it secret and do not commit it."
 echo "Run: source .env (or the app will load it via python-dotenv automatically)"
+
+# Ensure explicit restrictive permissions in case umask was changed
+chmod 600 "$ENV_FILE" || true
 
 exit 0

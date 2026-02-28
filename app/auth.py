@@ -6,8 +6,12 @@ from fastapi import HTTPException
 from dotenv import load_dotenv
 from pathlib import Path
 
+# Only load .env automatically when explicitly requested (development)
+# Set environment variable `USE_DOTENV=1` to enable loading of the project
+# .env. In production prefer injecting secrets via environment/secret stores.
 env_path = Path(__file__).parent.parent / ".env"
-load_dotenv(dotenv_path=env_path)
+if os.getenv("USE_DOTENV", "") == "1" and env_path.exists():
+    load_dotenv(dotenv_path=env_path)
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 # Algoritmo fijo para evitar el ataque "none" vía variable de entorno
