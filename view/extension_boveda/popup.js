@@ -44,9 +44,6 @@ async function derivarMAH(mek) {
   return buf2hex(await crypto.subtle.sign("HMAC", hmac, encoder.encode("autenticacion")));
 }
 
-/* Sesión persistente en chrome.storage.session:
-   la VK se exporta como raw hex junto con el JWT.
-   El storage se limpia automáticamente al cerrar el navegador. */
 async function saveSession(token, vkKey) {
   const rawVK = await crypto.subtle.exportKey("raw", vkKey);
   await chrome.storage.session.set({ sessionToken: token, vkHex: buf2hex(rawVK) });
@@ -72,10 +69,6 @@ async function clearSession() {
   await chrome.storage.session.remove(['sessionToken', 'vkHex']);
 }
 
-/* HIBP Pwned Passwords — k-Anonymity:
-   Solo se envían los primeros 5 chars del hash SHA-1.
-   La API devuelve ~800 hashes con ese prefijo y se compara localmente.
-   La contraseña nunca sale del navegador. */
 async function sha1hex(str) {
   const buf = await crypto.subtle.digest('SHA-1', encoder.encode(str));
   return buf2hex(buf).toUpperCase();
@@ -233,7 +226,11 @@ setupEye('eyeToggleReg',      'regPass');
 setupEye('eyeSitePass',       'sitePass');
 setupEye('eyeSitePassConfirm','sitePassConfirm');
 
-$('sitePass').addEventListener('input', () => checkBreachSite($('sitePass').value));
+$('sitePass').addEventListener('input', () => {
+  checkBreachSite($('sitePass').value);
+  // Hide confirm button when user manually edits the password
+  $('btnConfirmarGenerada').style.display = 'none';
+});
 $('editNewPass').addEventListener('input', () => checkBreachEdit($('editNewPass').value));
 
 $('regPass').addEventListener('input', evalStrength);
@@ -289,7 +286,6 @@ chrome.storage.local.get('pendingDomain', ({ pendingDomain }) => {
       if (tabs && tabs[0] && tabs[0].url) {
         try {
           const url = new URL(tabs[0].url);
-          // Ignorar páginas internas del navegador (chrome://, about:, etc.)
           if (url.protocol === 'http:' || url.protocol === 'https:') {
             applyDomain(url.hostname.replace(/^www\./, ''));
           }
@@ -329,10 +325,6 @@ async function updateSaveSectionVisibility() {
   if (!LOCAL_VK || !SESSION_TOKEN) { block.style.display = ''; return; }
   const alreadySaved = await siteAlreadyInVault(domain);
   block.style.display = alreadySaved ? 'none' : '';
-  if (alreadySaved) {
-    $('saveStep2').style.display = 'none';
-    $('saveStep1').style.display = 'flex';
-  }
 }
 
 $('btnIniciar').addEventListener('click', iniciarSesion);
@@ -488,7 +480,17 @@ async function registrar() {
   }
 }
 
-$('btnSiguiente').addEventListener('click', () => {
+$('btnSiguiente').addEventListener('click', guardarItem);
+$('sitePass').addEventListener('keydown', e => { if (e.key === 'Enter') guardarItem(); });
+
+async function guardarItem() {
+  if (!ensureSecureApi('step1Feedback')) return;
+  if (!LOCAL_VK || !SESSION_TOKEN) {
+    showFeedback('step1Feedback','err','Inicia sesión primero.');
+    return;
+  }
+
+  const btn  = $('btnSiguiente');
   const url  = $('siteUrl').value.trim();
   const pass = $('sitePass').value;
 
@@ -503,47 +505,6 @@ $('btnSiguiente').addEventListener('click', () => {
     showFeedback('step1Feedback','err','Introduce la contraseña del sitio.');
     shake($('sitePass').closest('.v-field'));
     markInput($('sitePass'), 'error');
-    return;
-  }
-
-  $('saveStep1').style.display = 'none';
-  $('saveStep2').style.display = 'flex';
-  $('sitePassConfirm').value = '';
-  $('sitePassConfirm').focus();
-  hideFeedback('step2Feedback');
-  markInput($('sitePassConfirm'), null);
-});
-
-$('btnVolver').addEventListener('click', () => {
-  $('saveStep2').style.display = 'none';
-  $('saveStep1').style.display = 'flex';
-  hideFeedback('step1Feedback');
-  markInput($('sitePass'), null);
-});
-
-$('btnGuardar').addEventListener('click', guardarItem);
-$('sitePassConfirm').addEventListener('keydown', e => { if (e.key === 'Enter') guardarItem(); });
-
-async function guardarItem() {
-  if (!ensureSecureApi('step2Feedback')) return;
-  if (!LOCAL_VK || !SESSION_TOKEN) {
-    showFeedback('saveFeedback','err','Inicia sesión primero.');
-    return;
-  }
-
-  const btn     = $('btnGuardar');
-  const url     = $('siteUrl').value.trim();
-  const pass    = $('sitePass').value;
-  const confirm = $('sitePassConfirm').value;
-
-  hideFeedback('step2Feedback');
-  markInput($('sitePassConfirm'), null);
-
-  if (pass !== confirm) {
-    showFeedback('step2Feedback','err','Las contraseñas no coinciden.');
-    markInput($('sitePassConfirm'), 'error');
-    shake($('sitePassConfirm').closest('.v-field'));
-    logLine('❌ Las contraseñas no coinciden.');
     return;
   }
 
@@ -568,22 +529,23 @@ async function guardarItem() {
 
     if (!res.ok) throw new Error('Error al guardar en servidor.');
 
-    markInput($('sitePassConfirm'), 'success');
-    showFeedback('saveFeedback','ok',`Credencial de "${url}" guardada.`);
+    markInput($('sitePass'), 'success');
+    showFeedback('step1Feedback','ok',`Credencial de "${url}" guardada.`);
     logLine(`✅ Credencial de ${url} cifrada y almacenada.`);
 
     setTimeout(() => {
-      $('saveStep2').style.display = 'none';
-      $('saveStep1').style.display = 'flex';
-      hideFeedback('saveFeedback');
-      markInput($('sitePassConfirm'), null);
+      $('sitePass').value = '';
+      markInput($('sitePass'), null);
+      hideBreachBadge('breachBadge');
+      $('btnConfirmarGenerada').style.display = 'none';
+      hideFeedback('step1Feedback');
       updateSaveSectionVisibility();
       refrescarListaBoveda(true);
     }, 1500);
 
   } catch (err) {
-    showFeedback('step2Feedback','err', err.message);
-    shake($('sitePassConfirm').closest('.v-field'));
+    showFeedback('step1Feedback','err', err.message);
+    shake($('sitePass').closest('.v-field'));
     logLine(`❌ ${err.message}`);
   } finally {
     setLoading(btn, false);
@@ -659,13 +621,33 @@ async function descargarBoveda() {
   await refrescarListaBoveda(false);
 }
 
+// ── DELETE ITEM ──────────────────────────────────────────────
+async function eliminarItem(id, site) {
+  if (!LOCAL_VK || !SESSION_TOKEN) return;
+  if (!confirm(`¿Eliminar la credencial de "${site}"?\nEsta acción no se puede deshacer.`)) return;
+
+  logLine(`⚙️ Eliminando credencial de ${site}...`);
+  try {
+    const res = await fetch(`${API_URL}/vault/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${SESSION_TOKEN}` }
+    });
+    if (!res.ok) throw new Error('Error al eliminar en el servidor.');
+    logLine(`✅ Credencial de ${site} eliminada.`);
+    refrescarListaBoveda(true);
+    updateSaveSectionVisibility();
+  } catch (err) {
+    logLine(`❌ ${err.message}`);
+    showFeedback('listFeedback','err', err.message);
+  }
+}
+
 function renderItem(id, text, delay = 0) {
   const list = $('itemsList');
   const el   = document.createElement('div');
   el.className = 'v-item';
   el.style.animationDelay = `${delay}ms`;
 
-  // Intenta parsear { site, password }; si falla muestra como texto plano
   let site = '', password = text;
   try {
     const parsed = JSON.parse(text);
@@ -685,6 +667,7 @@ function renderItem(id, text, delay = 0) {
     </span>
     <button class="v-item-edit" title="Editar contraseña">✏️</button>
     <button class="v-item-copy" title="Copiar contraseña">⎘</button>
+    <button class="v-item-delete" title="Eliminar credencial">🗑</button>
   `;
 
   const passEl = el.querySelector('.v-item-pass');
@@ -706,6 +689,10 @@ function renderItem(id, text, delay = 0) {
     copyBtn.textContent = '✔';
     copyBtn.style.color = 'var(--accent2)';
     setTimeout(() => { copyBtn.textContent = '⎘'; copyBtn.style.color = ''; }, 1500);
+  });
+
+  el.querySelector('.v-item-delete').addEventListener('click', () => {
+    eliminarItem(id, site || 'este sitio');
   });
 
   list.appendChild(el);
@@ -805,15 +792,34 @@ async function actualizarItem() {
   }
 }
 
+// ── GENERATE PASSWORD ────────────────────────────────────────
 $('btnGenerar').addEventListener('click', generarPassword);
 
 function generarPassword() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%&*?-_';
   const rnd = crypto.getRandomValues(new Uint8Array(16));
   const password = Array.from(rnd, b => chars[b % chars.length]).join('');
+
+  // Set the password field only (not the confirm field)
   setNativeValue($('sitePass'), password);
-  setNativeValue($('sitePassConfirm'), password);
+  // Clear confirm field since a new password was generated
+  $('sitePassConfirm').value = '';
+  markInput($('sitePassConfirm'), null);
+
+  // Show the confirm button
+  $('btnConfirmarGenerada').style.display = 'flex';
+  $('btnConfirmarGenerada').focus();
 }
+
+// "Use this password" confirmation button — auto-fills the confirm field
+$('btnConfirmarGenerada').addEventListener('click', () => {
+  const pass = $('sitePass').value;
+  if (!pass) return;
+  setNativeValue($('sitePassConfirm'), pass);
+  markInput($('sitePassConfirm'), 'success');
+  $('btnConfirmarGenerada').style.display = 'none';
+  logLine('✅ Contraseña generada confirmada.');
+});
 
 function setNativeValue(input, value) {
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
