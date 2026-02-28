@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/vault", tags=["Vault"])
 
 def _get_token(authorization: Optional[str] = Header(None)) -> str:
-    """Token solo por header Authorization: Bearer (evita fugas en logs/query)."""
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Token inválido")
     return authorization.split(" ")[1]

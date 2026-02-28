@@ -6,15 +6,11 @@ from fastapi import HTTPException
 from dotenv import load_dotenv
 from pathlib import Path
 
-# Only load .env automatically when explicitly requested (development)
-# Set environment variable `USE_DOTENV=1` to enable loading of the project
-# .env. In production prefer injecting secrets via environment/secret stores.
 env_path = Path(__file__).parent.parent / ".env"
 if os.getenv("USE_DOTENV", "") == "1" and env_path.exists():
     load_dotenv(dotenv_path=env_path)
 
 SECRET_KEY = os.getenv("SECRET_KEY")
-# Algoritmo fijo para evitar el ataque "none" vía variable de entorno
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 15))
 
@@ -37,7 +33,7 @@ def get_current_user(token: str) -> str:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
-        if email is None: 
+        if email is None:
             raise HTTPException(status_code=401, detail="Token inválido")
         return email
     except jwt.PyJWTError:

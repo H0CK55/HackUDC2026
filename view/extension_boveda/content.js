@@ -1,5 +1,3 @@
-// content.js — HackUDC Zero-Knowledge Vault
-
 (function () {
   'use strict';
 
@@ -7,7 +5,6 @@
   const WRAP_CLASS  = 'cg-wrap';
   const DROP_ID     = 'cg-autofill-drop';
 
-  // ─── 1. INYECTAR BADGE EN CAMPOS PASSWORD ─────────────────
   function injectIcon(input) {
     if (!input || input.type !== 'password') return;
     if (input.dataset.clavegal === '1') return;
@@ -59,12 +56,10 @@
 
     wrapper.appendChild(badge);
 
-    // Dropdown al enfocar el campo (mismo comportamiento que el badge)
     input.addEventListener('focus', () => requestAndShowDrop(input));
     input.addEventListener('blur',  () => setTimeout(removeAutofillDrop, 180));
   }
 
-  // ─── 2. ESCÁNER DE DOM (SPA-safe) ─────────────────────────
   function scan() {
     document.querySelectorAll('input[type="password"]:not([data-clavegal])').forEach(injectIcon);
   }
@@ -72,7 +67,6 @@
   observer.observe(document.documentElement, { childList: true, subtree: true });
   scan();
 
-  // ─── 3. LÓGICA DEL BADGE ──────────────────────────────────
   function handleBadgeClick(input) {
     chrome.runtime.sendMessage(
       { type: 'GET_CREDENTIALS', hostname: location.hostname },
@@ -81,21 +75,17 @@
 
         if (response && response.found && response.items.length > 0) {
           if (response.items.length === 1) {
-            // Una sola credencial → rellenar directamente
             fillPassword(input, response.items[0].password);
           } else {
-            // Varias → mostrar selector
             showAutofillDrop(input, response.items);
           }
         } else {
-          // Sin sesión o sin credenciales → abrir el popup
           chrome.runtime.sendMessage({ type: 'OPEN_VAULT', domain: location.hostname });
         }
       }
     );
   }
 
-  // ─── 4. DROPDOWN AL ENFOCAR ───────────────────────────────
   function requestAndShowDrop(input) {
     chrome.runtime.sendMessage(
       { type: 'GET_CREDENTIALS', hostname: location.hostname },
@@ -135,7 +125,7 @@
 
     drop.querySelectorAll('.cg-autofill-item').forEach((el, i) => {
       el.addEventListener('mousedown', (e) => {
-        e.preventDefault(); // evita que el input pierda foco antes del click
+        e.preventDefault();
         fillPassword(input, items[i].password);
         removeAutofillDrop();
       });
@@ -147,9 +137,7 @@
     if (el) el.remove();
   }
 
-  // ─── 5. UTILS ──────────────────────────────────────────────
   function fillPassword(input, value) {
-    // Setter nativo para compatibilidad con React / Vue / Angular
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
     setter.call(input, value);
     input.dispatchEvent(new Event('input',  { bubbles: true }));
@@ -161,7 +149,6 @@
     return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
-  // ─── 6. DETECCIÓN DE FORMULARIOS CON CONTRASEÑA ────────────
   function dismissSaveToast(toast) {
     if (!toast) return;
     toast.classList.remove('cg-toast-visible');
@@ -190,7 +177,6 @@
 
     document.body.appendChild(toast);
 
-    // Doble rAF para asegurar que el transition se aplica
     requestAnimationFrame(() => {
       requestAnimationFrame(() => toast.classList.add('cg-toast-visible'));
     });
@@ -222,7 +208,6 @@
       const passInputs = form.querySelectorAll('input[type="password"]');
       if (passInputs.length === 0) return;
 
-      // Tomar la primera contraseña no vacía
       let password = '';
       for (const inp of passInputs) {
         if (inp.value) { password = inp.value; break; }
@@ -231,7 +216,7 @@
 
       const hostname = location.hostname.replace(/^www\./, '');
       showSaveToast(hostname, password);
-    }, true); // fase de captura para que se ejecute antes de la navegación
+    }, true);
   }
 
   listenForPasswordForms();

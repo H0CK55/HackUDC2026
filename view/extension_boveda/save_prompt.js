@@ -1,4 +1,3 @@
-// save_prompt.js — VoidVault
 let _domain     = '';
 let _password   = '';
 let _online     = false;
@@ -10,7 +9,6 @@ function closeMe() {
   if (_myWindowId !== null) chrome.windows.remove(_myWindowId);
 }
 
-// Cargar datos pendientes
 chrome.storage.local.get('pendingSave', ({ pendingSave }) => {
   if (pendingSave) {
     _domain   = pendingSave.domain   || '';
@@ -18,8 +16,6 @@ chrome.storage.local.get('pendingSave', ({ pendingSave }) => {
     document.getElementById('domainLabel').textContent = _domain;
   }
 
-  // Preguntar al background por el estado de sesión
-  // (save_prompt es una ventana popup y NO puede usar chrome.storage.session directamente)
   chrome.runtime.sendMessage({ type: 'CHECK_SESSION' }, (response) => {
     _online = !!(response && response.online);
     const statusEl = document.getElementById('statusLabel');
@@ -48,7 +44,6 @@ document.getElementById('btnDismiss').addEventListener('click', () => {
   chrome.runtime.sendMessage({ type: 'DISMISS_SAVE' }, () => closeMe());
 });
 
-// Auto-cerrar a los 15 segundos
 setTimeout(() => {
   chrome.runtime.sendMessage({ type: 'DISMISS_SAVE' });
   closeMe();

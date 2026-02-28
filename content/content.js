@@ -1,7 +1,7 @@
 (function () {
   const BADGE_CLASS = "clavegal-icon";
   let activePanel = null;
-  let targetInput = null; // recordamos el input activo
+  let targetInput = null;
 
   function injectIcon(input) {
     if (input.dataset.clavegal === "1") return;
@@ -72,9 +72,8 @@
     panel.querySelector("#cgVerify").onclick = () => {
       const out = panel.querySelector("#cgOutput");
       out.textContent = "Verificando...";
-      const domain = location.hostname; // MVP: hostname; v1.1 → eTLD+1
+      const domain = location.hostname;
 
-      // Mandamos la petición única “buscar-o-crear”
       chrome.runtime?.sendMessage?.({
         type: "VERIFY_OR_CREATE",
         domain,
@@ -84,7 +83,6 @@
     };
   }
 
-  // Recibir respuestas del SW y actuar
   chrome.runtime?.onMessage?.addListener?.((msg) => {
     if (!activePanel) return;
     const out = activePanel.querySelector("#cgOutput");
@@ -92,14 +90,13 @@
 
     if (msg?.type === "VAULT_LOCKED") {
       out.textContent = "Vault bloqueado. Desbloquéalo en el popup (clave maestra).";
-      // (P4 mostrará el prompt de desbloqueo en el popup)
     }
 
     if (msg?.type === "FOUND" || msg?.type === "CREATED") {
       const pwd = msg.data?.password || "";
       if (targetInput) {
-        targetInput.value = pwd; // rellenar el campo
-        targetInput.dispatchEvent(new Event('input', { bubbles: true })); // para frameworks
+        targetInput.value = pwd;
+        targetInput.dispatchEvent(new Event('input', { bubbles: true }));
         targetInput.dispatchEvent(new Event('change', { bubbles: true }));
       }
       out.textContent = (msg.type === "FOUND")
@@ -111,7 +108,6 @@
       const { strength, pwned } = msg.data || {};
       const score = (strength && typeof strength.score === "number") ? strength.score : "?";
       out.textContent += `\nFortaleza: ${score} | Filtraciones: ${pwned ? "Sí" : "No"}`;
-      // NIST recomienda longitud y cribado contra filtraciones, no reglas rígidas. [1](https://securityboulevard.com/2025/09/nist-sp-800-63b-rev-4-password-updates/)[2](https://pages.nist.gov/800-63-3/sp800-63b.html)
     }
   });
 

@@ -1,9 +1,4 @@
-/**
- * POPUP - Interface de ClaveGal
- */
-
 document.addEventListener("DOMContentLoaded", () => {
-  // === GENERAR CONTRASEÑA ===
   document.getElementById("btnGenerate").addEventListener("click", () => {
     const options = {
       length: parseInt(document.getElementById("length").value) || 16,
@@ -29,7 +24,6 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   });
 
-  // === GENERAR PASSPHRASE ===
   document.getElementById("btnPassphrase").addEventListener("click", () => {
     const options = {
       wordCount: parseInt(document.getElementById("wordCount").value) || 5,
@@ -53,7 +47,6 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   });
 
-  // === VERIFICAR CONTRASEÑA ===
   document.getElementById("btnCheck").addEventListener("click", () => {
     const password = document.getElementById("checkPassword").value;
     if (!password) {
@@ -86,7 +79,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-// Helpers
 function escapeHtml(text) {
   const div = document.createElement("div");
   div.textContent = text;

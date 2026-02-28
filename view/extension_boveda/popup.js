@@ -684,7 +684,6 @@ async function descargarBoveda() {
   await refrescarListaBoveda(false);
 }
 
-// ── DELETE MODAL ──────────────────────────────────────────────
 let _pendingDeleteId   = null;
 let _pendingDeleteSite = null;
 
@@ -735,7 +734,6 @@ $('btnDeleteConfirmar').addEventListener('click', async () => {
   }
 });
 
-// ── DELETE ITEM ──────────────────────────────────────────────
 async function eliminarItem(id, site) {
   if (!LOCAL_VK || !SESSION_TOKEN) return;
   openDeleteModal(id, site || 'este sitio');
@@ -777,8 +775,6 @@ function renderItem(id, text, delay = 0) {
     passEl.textContent = revealed ? password : maskedPass;
     passEl.style.color = revealed ? 'var(--accent2)' : '';
   });
-
-//Paula
 
   el.querySelector('.v-item-edit').addEventListener('click', () => {
     openEditModal(id, site || text);
@@ -905,7 +901,6 @@ async function actualizarItem() {
   }
 }
 
-// ── GENERATE PASSWORD ────────────────────────────────────────
 $('btnGenerar').addEventListener('click', generarPassword);
 
 function generarPassword() {
@@ -924,7 +919,6 @@ function setNativeValue(input, value) {
   input.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-// ── CAMBIAR CONTRASEÑA MAESTRA ────────────────────────────────
 $('btnCambiarPass').addEventListener('click', () => {
   $('cambiarPassOverlay').classList.add('show');
   hideFeedback('cambiarPassFeedback');
@@ -1004,7 +998,6 @@ async function cambiarPasswordMaestra() {
   }
 }
 
-// ── CREDENCIAL PENDIENTE (detectada en formulario web) ────────
 async function handlePendingCredential() {
   const data = await chrome.storage.local.get('pendingSaveCredential');
   if (!data.pendingSaveCredential) return;
@@ -1032,7 +1025,6 @@ async function handlePendingCredential() {
   }
 }
 
-// ── LOGOUT ────────────────────────────────────────────────────
 $('btnLogout').addEventListener('click', async () => {
   await clearSession();
   lockVaultUI();
@@ -1044,12 +1036,10 @@ $('btnLogout').addEventListener('click', async () => {
   logLine('🔒 Sesión cerrada.');
 });
 
-// ── BÚSQUEDA ──────────────────────────────────────────────────
 $('searchInput').addEventListener('input', () => {
   renderFilteredItems($('searchInput').value);
 });
 
-// ── INACTIVIDAD — resetear timer en cualquier interacción ─────
 ['click', 'keydown'].forEach(evt =>
   document.addEventListener(evt, () => { if (SESSION_TOKEN) resetInactivityTimer(); }, { passive: true })
 );

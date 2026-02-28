@@ -2,10 +2,9 @@ import re
 from pydantic import BaseModel, ConfigDict, Field, field_validator, EmailStr
 from typing import List, Optional
 
-# Límites para evitar DoS por payloads enormes
-MAX_PAYLOAD_HEX = 100 * 1024   # 100 KiB en hex
-MAX_NONCE_HEX = 128            # nonce en hex (64 bytes es suficiente para GCM)
-MAX_SALT_VK_LEN = 10 * 1024   # 10 KiB para salt/encrypted_vk
+MAX_PAYLOAD_HEX = 100 * 1024
+MAX_NONCE_HEX = 128
+MAX_SALT_VK_LEN = 10 * 1024
 
 _EMAIL_RE = re.compile(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$')
 
@@ -55,7 +54,6 @@ class VaultItem(BaseModel):
         h = v.strip()
         if len(h) == 0:
             raise ValueError("encrypted_payload cannot be empty")
-        # length must be even (pairs of hex chars)
         if len(h) % 2 != 0:
             raise ValueError("encrypted_payload hex has odd length")
         if len(h) > MAX_PAYLOAD_HEX:

@@ -7,7 +7,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
   <style>
-    /* ── RESET & VARIABLES ─────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
@@ -524,7 +523,6 @@
 
 
 
-    /* ── DELETE MODAL ESPECÍFICO ───────────────────────────── */
     #deleteOverlay .v-edit-modal {
       max-width: 300px;
       border-color: rgba(255,51,88,.35);
@@ -576,7 +574,6 @@
 <body>
 <div class="vault-wrap">
 
-  <!-- ── HEADER ──────────────────────────────────────────── -->
   <header class="v-header">
     <div class="v-logo">🛡️</div>
     <div class="v-header-text">
@@ -589,22 +586,17 @@
     </div>
   </header>
 
-  <!-- ── DOMAIN BADGE ─────────────────────────────────────── -->
   <div id="domainBadge" class="v-domain-badge" style="margin: 10px 16px 0;">
     <span class="v-domain-dot"></span>
     <span id="domainText">—</span>
   </div>
 
-  <!-- ── TABS ────────────────────────────────────────────── -->
   <nav class="v-tabs" id="tabs">
     <button class="v-tab active" data-tab="auth">Acceso</button>
     <button class="v-tab" data-tab="vault" id="tabVault">Bóveda</button>
     <button class="v-tab" data-tab="register">Registro</button>
   </nav>
 
-  <!-- ═══════════════════════════════════════════════════════
-       TAB: AUTH (Login)
-  ══════════════════════════════════════════════════════════ -->
   <section class="v-panel active" id="panel-auth">
 
     <div class="v-feedback info" id="pendingCredentialBanner" style="display:none;"></div>
@@ -635,21 +627,15 @@
 
   </section>
 
-  <!-- ═══════════════════════════════════════════════════════
-       TAB: VAULT
-  ══════════════════════════════════════════════════════════ -->
   <section class="v-panel" id="panel-vault">
 
-    <!-- Locked state -->
     <div class="v-locked-banner" id="vaultLocked">
       <span class="icon">🔒</span>
       <span>Inicia sesión para acceder a la bóveda</span>
     </div>
 
-    <!-- Unlocked state -->
     <div id="vaultUnlocked" style="display:none; flex-direction:column; gap:12px;">
 
-      <!-- Logout / usuario -->
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
         <span id="userEmailLabel" style="font-size:10px;color:var(--accent2);letter-spacing:.06em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">—</span>
         <button class="v-btn v-btn-danger v-btn-auto" id="btnLogout" style="padding:3px 10px;font-size:11px;min-height:0;">
@@ -657,10 +643,8 @@
         </button>
       </div>
 
-      <!-- Bloque "Nueva credencial" -->
       <div id="saveCredentialBlock">
 
-      <!-- ── GUARDAR CREDENCIAL ──────────────────────────────── -->
       <div id="saveStep1" style="display:flex; flex-direction:column; gap:10px;">
 
         <div class="v-site-confirm" id="detectedSite" style="display:none;">
@@ -675,7 +659,6 @@
           <button class="v-eye" id="eyeSitePass" type="button">👁</button>
         </div>
 
-        <!-- Generate button -->
         <button class="v-btn v-btn-ghost v-btn-full" id="btnGenerar" type="button">
           <span class="spinner"></span>
           <span class="btn-text">⚡ Generar contraseña</span>
@@ -694,8 +677,6 @@
       </div>
 
       </div>
-      <!-- /saveCredentialBlock -->
-
       <hr class="v-divider">
 
       <div style="display:flex; align-items:center; justify-content:space-between;">
@@ -712,7 +693,6 @@
       </div>
 
       <div class="v-items-list" id="itemsList">
-        <!-- items injected by JS -->
       </div>
       <div class="v-feedback" id="listFeedback"></div>
 
@@ -724,9 +704,6 @@
 
   </section>
 
-  <!-- ═══════════════════════════════════════════════════════
-       TAB: REGISTER
-  ══════════════════════════════════════════════════════════ -->
   <section class="v-panel" id="panel-register">
 
     <div class="v-input-group">
@@ -765,7 +742,6 @@
 
   </section>
 
-  <!-- ── MODAL CONFIRMAR ELIMINACIÓN ──────────────────────── -->
   <div class="v-edit-overlay" id="deleteOverlay">
     <div class="v-edit-modal">
       <div class="delete-modal-header">
@@ -797,7 +773,6 @@
     </div>
   </div>
 
-  <!-- ── MODAL EDITAR CONTRASEÑA ──────────────────────────── -->
   <div class="v-edit-overlay" id="editOverlay">
     <div class="v-edit-modal">
       <h3>✏️ Editar contraseña</h3>
@@ -825,7 +800,6 @@
     </div>
   </div>
 
-  <!-- ── MODAL CAMBIAR CONTRASEÑA MAESTRA ────────────────── -->
   <div class="v-edit-overlay" id="cambiarPassOverlay">
     <div class="v-edit-modal">
       <h3>🔑 Cambiar contraseña maestra</h3>
@@ -854,7 +828,6 @@
     </div>
   </div>
 
-  <!-- ── LOG CONSOLE ──────────────────────────────────────── -->
   <div class="v-console-wrap">
     <div class="v-console-bar">
       <span class="v-console-dot"></span>

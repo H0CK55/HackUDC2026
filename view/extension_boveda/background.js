@@ -1,4 +1,3 @@
-// background.js — Service Worker VoidVault
 importScripts('config.js');
 
 const API_URL = (typeof VAULT_API_URL !== 'undefined' ? VAULT_API_URL : null) || "http://localhost:8000/api";
@@ -41,7 +40,7 @@ async function _getCredentials(hostname) {
         if (_siteMatches(parsed.site || '', hostname)) {
           matching.push({ site: parsed.site, password: parsed.password, id: item.id });
         }
-      } catch { /* item corrupto — se ignora */ }
+      } catch {}
     }
 
     return { found: matching.length > 0, items: matching };

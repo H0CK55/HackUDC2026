@@ -1,8 +1,3 @@
-/* ============================================================
-   HackUDC Zero-Knowledge Vault — badge.css
-   Aesthetic: Refined dark vault / security terminal
-   ============================================================ */
-
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@600;700&display=swap');
 
 :root {
@@ -13,8 +8,8 @@
   --v-border-glow: rgba(99,102,241,.55);
   --v-text:        #e8e8f0;
   --v-muted:       #8888aa;
-  --v-accent:      #6366f1;       /* indigo */
-  --v-accent2:     #22d3ee;       /* cyan */
+  --v-accent:      #6366f1;
+  --v-accent2:     #22d3ee;
   --v-danger:      #f43f5e;
   --v-success:     #10b981;
   --v-shadow:      0 24px 48px rgba(0,0,0,.7), 0 4px 12px rgba(0,0,0,.5);
@@ -27,14 +22,12 @@
   --v-font-ui:     'Syne', 'Segoe UI', system-ui, sans-serif;
 }
 
-/* ─── WRAPPER ─────────────────────────────────────────── */
 .cg-wrap {
   position: relative;
   display: inline-block;
 }
 .cg-wrap[style*="block"] { display: block !important; }
 
-/* ─── TRIGGER BADGE ───────────────────────────────────── */
 .clavegal-icon {
   position: absolute;
   right: 6px;
@@ -100,7 +93,6 @@
   opacity: 1;
 }
 
-/* ─── TOOLTIP ─────────────────────────────────────────── */
 .clavegal-icon::after {
   content: attr(aria-label);
   position: absolute;
@@ -135,7 +127,6 @@
 .clavegal-icon:hover::before,
 .clavegal-icon:focus-visible::before { opacity: 1; }
 
-/* ─── RIPPLE ──────────────────────────────────────────── */
 .cg-ripple {
   position: absolute;
   width: 10px; height: 10px;
@@ -159,7 +150,6 @@
   100% { box-shadow: 0 0 0 0 rgba(99,102,241,.0); }
 }
 
-/* ─── OVERLAY BACKDROP ────────────────────────────────── */
 .cg-overlay {
   position: fixed;
   inset: 0;
@@ -184,7 +174,6 @@
   -webkit-backdrop-filter: blur(6px);
 }
 
-/* ─── PANEL ───────────────────────────────────────────── */
 .cg-panel {
   position: relative;
   width: 380px;
@@ -204,7 +193,6 @@
   transform: translateY(0) scale(1);
 }
 
-/* scanline decoration */
 .cg-panel::before {
   content: "";
   position: absolute;
@@ -220,7 +208,6 @@
   z-index: 0;
 }
 
-/* top accent bar */
 .cg-panel::after {
   content: "";
   position: absolute;
@@ -235,7 +222,6 @@
   100% { background-position: 200% 0%; }
 }
 
-/* ─── HEADER ──────────────────────────────────────────── */
 .cg-header {
   position: relative;
   z-index: 1;
@@ -298,7 +284,6 @@
   color: var(--v-danger);
 }
 
-/* ─── BODY ────────────────────────────────────────────── */
 .cg-body {
   position: relative;
   z-index: 1;
@@ -307,7 +292,6 @@
   gap: 14px;
 }
 
-/* Domain pill */
 .cg-domain-pill {
   display: inline-flex;
   align-items: center;
@@ -334,7 +318,6 @@
   50%      { opacity: .5; transform: scale(.8); }
 }
 
-/* Description */
 .cg-desc {
   font-family: var(--v-font-mono);
   font-size: 12px;
@@ -342,7 +325,6 @@
   line-height: 1.6;
 }
 
-/* Status line */
 .cg-status {
   display: flex;
   align-items: center;
@@ -358,7 +340,6 @@
 }
 .cg-status-icon { font-size: 13px; }
 
-/* CTA button — grande y legible */
 .cg-btn {
   width: 100%;
   min-height: 48px;
@@ -410,7 +391,6 @@
   flex-shrink: 0;
 }
 
-/* ─── CREDENCIALES EN EL OVERLAY ─────────────────────── */
 .cg-credentials-section {
   display: flex;
   flex-direction: column;
@@ -477,7 +457,6 @@
   margin: 2px 0;
 }
 
-/* ─── AUTOFILL DROPDOWN ───────────────────────────────── */
 .cg-autofill-drop {
   position: fixed;
   z-index: 2147483646;
@@ -538,7 +517,6 @@
   border-color: var(--v-border-glow);
 }
 
-/* ─── REDUCED MOTION ──────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .clavegal-icon,
   .cg-panel,
@@ -549,7 +527,6 @@
   .cg-panel::after { animation: none !important; }
 }
 
-/* ─── SAVE TOAST NOTIFICATION ─────────────────────────── */
 .cg-save-toast {
   position: fixed;
   bottom: 24px;

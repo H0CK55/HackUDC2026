@@ -51,7 +51,6 @@ async def get_salt(
     db: Session = Depends(get_db),
     _: None = Depends(_rate_limit_salt_dep),
 ):
-    # Respuesta idéntica exista o no el usuario (evita enumeración por timing/contenido)
     normalized = email.strip().lower()
     user = db.query(UserDB).filter(UserDB.email == normalized).first()
     if user:
