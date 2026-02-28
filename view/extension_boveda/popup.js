@@ -1,4 +1,4 @@
-const API_URL = (typeof window !== "undefined" && window.VAULT_API_URL) || "http://localhost:8000/api";
+const API_URL     = (typeof window !== "undefined" && window.VAULT_API_URL)  || "http://localhost:8000/api";
 let SESSION_TOKEN = null;
 let LOCAL_VK      = null;
 
@@ -803,6 +803,22 @@ async function actualizarItem() {
   } finally {
     setLoading(btn, false);
   }
+}
+
+$('btnGenerar').addEventListener('click', generarPassword);
+
+function generarPassword() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%&*?-_';
+  const rnd = crypto.getRandomValues(new Uint8Array(16));
+  const password = Array.from(rnd, b => chars[b % chars.length]).join('');
+  setNativeValue($('sitePass'), password);
+  setNativeValue($('sitePassConfirm'), password);
+}
+
+function setNativeValue(input, value) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+  setter.call(input, value);
+  input.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 (async () => {
