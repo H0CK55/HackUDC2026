@@ -6,6 +6,7 @@ from ..database import get_db
 from ..auth import get_current_user
 from ..models import VaultItemDB
 from ..schemas import VaultItem
+from ..rate_limit import rate_limit_vault_read, rate_limit_vault_write
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/vault", tags=["Vault"])
@@ -21,7 +22,8 @@ def _get_token(authorization: Optional[str] = Header(None)) -> str:
 async def get_vault(
     request: Request,
     authorization: Optional[str] = Header(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: None = Depends(rate_limit_vault_read),
 ):
     jwt_token = _get_token(authorization=authorization)
     email = get_current_user(jwt_token)
@@ -35,7 +37,8 @@ async def update_vault_item(
     item: VaultItem,
     request: Request,
     authorization: Optional[str] = Header(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: None = Depends(rate_limit_vault_write),
 ):
     jwt_token = _get_token(authorization=authorization)
     email = get_current_user(jwt_token)
@@ -55,7 +58,8 @@ async def delete_vault_item(
     item_id: int,
     request: Request,
     authorization: Optional[str] = Header(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: None = Depends(rate_limit_vault_write),
 ):
     jwt_token = _get_token(authorization=authorization)
     email = get_current_user(jwt_token)
@@ -74,7 +78,8 @@ async def add_vault_item(
     item: VaultItem,
     request: Request,
     authorization: Optional[str] = Header(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: None = Depends(rate_limit_vault_write),
 ):
     jwt_token = _get_token(authorization=authorization)
     email = get_current_user(jwt_token)

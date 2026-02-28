@@ -622,6 +622,14 @@
     <!-- Unlocked state -->
     <div id="vaultUnlocked" style="display:none; flex-direction:column; gap:12px;">
 
+      <!-- Logout / usuario -->
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <span id="userEmailLabel" style="font-size:10px;color:var(--accent2);letter-spacing:.06em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">—</span>
+        <button class="v-btn v-btn-danger v-btn-auto" id="btnLogout" style="padding:3px 10px;font-size:11px;min-height:0;">
+          <span class="btn-text">⏻ Salir</span>
+        </button>
+      </div>
+
       <!-- Bloque "Nueva credencial" -->
       <div id="saveCredentialBlock">
 
@@ -674,10 +682,19 @@
         </button>
       </div>
 
+      <div class="v-field" style="margin-bottom:-4px;">
+        <span class="v-field-icon">🔍</span>
+        <input class="v-input" id="searchInput" type="text" placeholder="Buscar por sitio...">
+      </div>
+
       <div class="v-items-list" id="itemsList">
         <!-- items injected by JS -->
       </div>
       <div class="v-feedback" id="listFeedback"></div>
+
+      <button class="v-btn v-btn-ghost v-btn-full" id="btnCambiarPass" type="button" style="margin-top:4px;font-size:11px;opacity:.6;">
+        <span class="btn-text">🔑 Cambiar contraseña maestra</span>
+      </button>
 
     </div>
 
@@ -747,6 +764,35 @@
         <button class="v-btn v-btn-warn" id="btnEditGuardar">
           <span class="spinner"></span>
           <span class="btn-text">🔒 Guardar cambio</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL CAMBIAR CONTRASEÑA MAESTRA ────────────────── -->
+  <div class="v-edit-overlay" id="cambiarPassOverlay">
+    <div class="v-edit-modal">
+      <h3>🔑 Cambiar contraseña maestra</h3>
+      <div class="v-field">
+        <span class="v-field-icon">🔓</span>
+        <input class="v-input" id="oldMasterPass" type="password" placeholder="Contraseña actual">
+        <button class="v-eye" id="eyeOldMaster" type="button">👁</button>
+      </div>
+      <div class="v-field">
+        <span class="v-field-icon">🔑</span>
+        <input class="v-input" id="newMasterPass" type="password" placeholder="Nueva contraseña maestra">
+        <button class="v-eye" id="eyeNewMaster" type="button">👁</button>
+      </div>
+      <div class="v-field">
+        <span class="v-field-icon">✔</span>
+        <input class="v-input" id="newMasterPassConfirm" type="password" placeholder="Confirmar nueva contraseña">
+      </div>
+      <div class="v-feedback" id="cambiarPassFeedback"></div>
+      <div class="v-btn-row">
+        <button class="v-btn v-btn-ghost v-btn-auto" id="btnCambiarPassCancelar">Cancelar</button>
+        <button class="v-btn v-btn-warn" id="btnCambiarPassGuardar">
+          <span class="spinner"></span>
+          <span class="btn-text">🔒 Cambiar</span>
         </button>
       </div>
     </div>

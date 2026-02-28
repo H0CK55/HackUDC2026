@@ -41,3 +41,6 @@ htmlcov/
 # Base de datos local (puede contener datos sensibles)
 vault.db
 *.db
+
+# Archivos locales de herramientas IA
+.claude/

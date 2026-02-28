@@ -1,6 +1,7 @@
 // background.js — Service Worker VoidVault
+importScripts('config.js');
 
-const API_URL = "http://localhost:8000/api";
+const API_URL = (typeof VAULT_API_URL !== 'undefined' ? VAULT_API_URL : null) || "http://localhost:8000/api";
 const _dec = new TextDecoder();
 
 function _hex2buf(h) {

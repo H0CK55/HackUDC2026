@@ -1,6 +1,6 @@
 import os
 from sqlalchemy import create_engine, event
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 # En producción usar DATABASE_URL (ej. postgresql://... o sqlite:////data/vault.db)
