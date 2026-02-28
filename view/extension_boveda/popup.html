@@ -67,9 +67,12 @@
 
     /* ── WRAPPER ───────────────────────────────────────────── */
     .vault-wrap {
-      position: relative; z-index: 1;
-      padding: 0 0 12px;
-      display: flex; flex-direction: column; gap: 0;
+      position: relative; 
+      z-index: 1;
+      padding-bottom: 150px; /* IMPORTANTE: Deja espacio para la terminal fija */
+      display: flex; 
+      flex-direction: column; 
+      gap: 0;
     }
 
     /* ── HEADER ────────────────────────────────────────────── */
@@ -368,12 +371,32 @@
     }
 
     /* ── LOG CONSOLE ───────────────────────────────────────── */
-    .v-console-wrap {
-      margin: 8px 16px 0;
-      border: 1px solid var(--border);
-      border-radius: 8px; overflow: hidden;
-      animation: fadeDown .45s .2s var(--ease) both;
-    }
+    /* ── LOG CONSOLE (FIJA AL FONDO) ───────────────────────── */
+  .v-console-wrap {
+    position: fixed;   /* Cambiado de static/relative a fixed */
+    bottom: 0;         /* Pegada al fondo */
+    left: 0;           /* Alineada a la izquierda */
+    right: 0;          /* Alineada a la derecha para ocupar todo el ancho */
+    margin: 0;         /* Quitamos márgenes para que encaje perfecta */
+    border: none;
+    border-top: 1px solid var(--border-hi); /* Borde superior más brillante */
+    z-index: 1000;     /* Aseguramos que esté por encima de todo */
+    background: var(--bg);
+    animation: none;   /* Opcional: quitar animación para que no "baile" al cargar */
+  }
+
+  .v-console {
+    background: #050810;
+    color: #00ff9d;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.6;
+    padding: 10px 12px;
+    height: 115px;      /* Altura fija cómoda */
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
     .v-console-bar {
       display: flex; align-items: center; gap: 6px;
       padding: 6px 10px;
