@@ -12,7 +12,12 @@ const decoder = new TextDecoder();
    UTILS: crypto helpers
 ───────────────────────────────────────────── */
 function buf2hex(b) { return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2,'0')).join(''); }
-function hex2buf(h) { return new Uint8Array(h.match(/.{1,2}/g).map(b => parseInt(b,16))); }
+function hex2buf(h) {
+  if (typeof h !== 'string' || h.length === 0 || h.length % 2 !== 0 || !/^[0-9a-fA-F]+$/.test(h)) {
+    throw new Error('Formato hexadecimal inválido');
+  }
+  return new Uint8Array(h.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+}
 
 async function derivarMEK(password, salt) {
   const km = await crypto.subtle.importKey("raw", encoder.encode(password), { name:"PBKDF2" }, false, ["deriveBits","deriveKey"]);
@@ -24,6 +29,36 @@ async function derivarMAH(mek) {
   const bits = await crypto.subtle.exportKey("raw", mek);
   const hmac = await crypto.subtle.importKey("raw", bits, { name:"HMAC", hash:"SHA-256" }, false, ["sign"]);
   return buf2hex(await crypto.subtle.sign("HMAC", hmac, encoder.encode("autenticacion")));
+}
+
+/* ─────────────────────────────────────────────
+   SESIÓN PERSISTENTE (chrome.storage.session)
+   La VK se exporta como raw hex; el token se guarda tal cual.
+   chrome.storage.session se limpia al cerrar el navegador.
+───────────────────────────────────────────── */
+async function saveSession(token, vkKey) {
+  const rawVK = await crypto.subtle.exportKey("raw", vkKey);
+  await chrome.storage.session.set({ sessionToken: token, vkHex: buf2hex(rawVK) });
+}
+
+async function restoreSession() {
+  try {
+    const data = await chrome.storage.session.get(['sessionToken', 'vkHex']);
+    if (data.sessionToken && data.vkHex) {
+      SESSION_TOKEN = data.sessionToken;
+      LOCAL_VK = await crypto.subtle.importKey(
+        "raw", hex2buf(data.vkHex), { name: "AES-GCM" }, true, ["encrypt", "decrypt"]
+      );
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
+async function clearSession() {
+  SESSION_TOKEN = null;
+  LOCAL_VK = null;
+  await chrome.storage.session.remove(['sessionToken', 'vkHex']);
 }
 
 /* ─────────────────────────────────────────────
@@ -312,6 +347,8 @@ async function iniciarSesion() {
     );
     LOCAL_VK = await crypto.subtle.importKey("raw", vkBuffer, { name:"AES-GCM" }, true, ["encrypt","decrypt"]);
 
+    await saveSession(SESSION_TOKEN, LOCAL_VK);
+
     markInput($('email'),      'success');
     markInput($('masterPass'), 'success');
     showFeedback('loginFeedback','ok','Bóveda desbloqueada correctamente.');
@@ -373,7 +410,7 @@ async function registrar() {
   logLine('⚙️ Generando claves criptográficas...');
 
   try {
-    const newSalt = 'sal_' + Date.now();
+    const newSalt = buf2hex(crypto.getRandomValues(new Uint8Array(32)));
     const mek = await derivarMEK(pass, email + newSalt);
     const mah = await derivarMAH(mek);
 
@@ -742,3 +779,15 @@ async function actualizarItem() {
     setLoading(btn, false);
   }
 }
+
+/* ─────────────────────────────────────────────
+   INIT: restaurar sesión al abrir el popup
+───────────────────────────────────────────── */
+(async () => {
+  const restored = await restoreSession();
+  if (restored) {
+    logLine('🟢 Sesión restaurada automáticamente.');
+    unlockVaultUI();
+    refrescarListaBoveda(true);
+  }
+})();

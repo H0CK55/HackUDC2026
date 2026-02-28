@@ -1,4 +1,5 @@
 import secrets
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from ..database import get_db
@@ -6,6 +7,8 @@ from ..models import UserDB
 from ..schemas import UserRegister, UserLogin
 from ..auth import get_password_hash, verify_mah, create_access_token
 from ..rate_limit import rate_limit_auth, rate_limit_salt
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["Users"])
 
@@ -38,6 +41,7 @@ async def register(
     )
     db.add(new_user)
     db.commit()
+    logger.info("REGISTER_OK ip=%s email=%s", request.client.host, email)
     return {"msg": "Usuario registrado exitosamente"}
 
 @router.get("/salt/{email}")
@@ -66,12 +70,15 @@ async def login(
     email = user.email.strip().lower()
     db_user = db.query(UserDB).filter(UserDB.email == email).first()
     if not db_user:
+        logger.warning("LOGIN_FAIL ip=%s email=%s reason=user_not_found", request.client.host, email)
         raise HTTPException(status_code=401, detail="Credenciales incorrectas")
-    
+
     if not verify_mah(user.mah, db_user.mah_hash):
+        logger.warning("LOGIN_FAIL ip=%s email=%s reason=bad_mah", request.client.host, email)
         raise HTTPException(status_code=401, detail="Credenciales incorrectas")
-    
+
     access_token = create_access_token(data={"sub": email})
+    logger.info("LOGIN_OK ip=%s email=%s", request.client.host, email)
     return {
         "access_token": access_token,
         "token_type": "bearer",
