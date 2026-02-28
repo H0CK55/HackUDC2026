@@ -226,16 +226,13 @@ function unlockVaultUI() {
   const email = getEmailFromToken();
   if (email) $('userEmailLabel').textContent = email;
   
-  // Hide auth and register tabs when logged in
   document.querySelectorAll('.v-tab').forEach(tab => {
     if (tab.dataset.tab === 'auth' || tab.dataset.tab === 'register') {
       tab.style.display = 'none';
     }
   });
   
-  // Automatically switch to vault tab
   document.querySelector('[data-tab="vault"]').click();
-  
   resetInactivityTimer();
 }
 
@@ -245,7 +242,6 @@ function lockVaultUI() {
   setStatus('offline');
   $('tabVault').style.color = '';
   
-  // Show auth and register tabs when logged out
   document.querySelectorAll('.v-tab').forEach(tab => {
     if (tab.dataset.tab === 'auth' || tab.dataset.tab === 'register') {
       tab.style.display = '';
@@ -255,7 +251,6 @@ function lockVaultUI() {
   clearTimeout(_inactivityTimer);
   _inactivityTimer = null;
 }
-
 
 async function apiFetch(url, options = {}) {
   const res = await fetch(url, options);
@@ -300,7 +295,6 @@ setupEye('eyeSitePass',       'sitePass');
 
 $('sitePass').addEventListener('input', () => {
   checkBreachSite($('sitePass').value);
-  // Hide confirm button when user manually edits the password
   $('btnConfirmarGenerada').style.display = 'none';
 });
 $('editNewPass').addEventListener('input', () => checkBreachEdit($('editNewPass').value));
@@ -692,25 +686,61 @@ async function descargarBoveda() {
   await refrescarListaBoveda(false);
 }
 
-// ── DELETE ITEM ──────────────────────────────────────────────
-async function eliminarItem(id, site) {
-  if (!LOCAL_VK || !SESSION_TOKEN) return;
-  if (!confirm(`¿Eliminar la credencial de "${site}"?\nEsta acción no se puede deshacer.`)) return;
+// ── DELETE MODAL ──────────────────────────────────────────────
+let _pendingDeleteId   = null;
+let _pendingDeleteSite = null;
+
+function openDeleteModal(id, site) {
+  _pendingDeleteId   = id;
+  _pendingDeleteSite = site;
+  $('deleteSiteLabel').textContent = site;
+  $('deleteOverlay').classList.add('show');
+  setTimeout(() => $('btnDeleteConfirmar').focus(), 50);
+}
+
+function closeDeleteModal() {
+  $('deleteOverlay').classList.remove('show');
+  _pendingDeleteId   = null;
+  _pendingDeleteSite = null;
+}
+
+$('btnDeleteCancelar').addEventListener('click', closeDeleteModal);
+
+$('deleteOverlay').addEventListener('click', e => {
+  if (e.target === $('deleteOverlay')) closeDeleteModal();
+});
+
+$('btnDeleteConfirmar').addEventListener('click', async () => {
+  if (!_pendingDeleteId || !LOCAL_VK || !SESSION_TOKEN) return;
+
+  const btn  = $('btnDeleteConfirmar');
+  const site = _pendingDeleteSite;
+  setLoading(btn, true);
 
   logLine(`⚙️ Eliminando credencial de ${site}...`);
   try {
-    const res = await apiFetch(`${API_URL}/vault/${id}`, {
+    const res = await apiFetch(`${API_URL}/vault/${_pendingDeleteId}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${SESSION_TOKEN}` }
     });
     if (!res.ok) throw new Error('Error al eliminar en el servidor.');
     logLine(`✅ Credencial de ${site} eliminada.`);
+    closeDeleteModal();
     refrescarListaBoveda(true);
     updateSaveSectionVisibility();
   } catch (err) {
     logLine(`❌ ${err.message}`);
-    showFeedback('listFeedback','err', err.message);
+    showFeedback('listFeedback', 'err', err.message);
+    closeDeleteModal();
+  } finally {
+    setLoading(btn, false);
   }
+});
+
+// ── DELETE ITEM ──────────────────────────────────────────────
+async function eliminarItem(id, site) {
+  if (!LOCAL_VK || !SESSION_TOKEN) return;
+  openDeleteModal(id, site || 'este sitio');
 }
 
 function renderItem(id, text, delay = 0) {
@@ -882,15 +912,11 @@ function generarPassword() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%&*?-_';
   const rnd = crypto.getRandomValues(new Uint8Array(16));
   const password = Array.from(rnd, b => chars[b % chars.length]).join('');
-
   setNativeValue($('sitePass'), password);
-
-  // Show the confirm button
   $('btnConfirmarGenerada').style.display = 'flex';
   $('btnConfirmarGenerada').focus();
 }
 
-// "Use this password" confirmation button
 $('btnConfirmarGenerada').addEventListener('click', () => {
   const pass = $('sitePass').value;
   if (!pass) return;
@@ -992,24 +1018,18 @@ async function handlePendingCredential() {
   const { site, password } = data.pendingSaveCredential;
 
   if (SESSION_TOKEN && LOCAL_VK) {
-    // Sesión activa → ir al tab Bóveda, pre-rellenar y pedir confirmación
     await chrome.storage.local.remove('pendingSaveCredential');
-
     document.querySelector('[data-tab="vault"]').click();
 
-    // Aplicar dominio si no está ya establecido
     if (site && (!$('siteUrl').value || $('siteUrl').value.trim() === '')) {
       applyDomain(site);
     }
 
-    // Pre-rellenar la contraseña detectada
     setNativeValue($('sitePass'), password);
-
     showFeedback('step1Feedback', 'info', `Contraseña detectada de "${escapeHtml(site)}". Revisa y guarda.`);
     logLine(`🌐 Contraseña detectada en formulario: ${site}`);
     await updateSaveSectionVisibility();
   } else {
-    // Sin sesión → mostrar banner en el panel de acceso
     const banner = $('pendingCredentialBanner');
     if (banner) {
       banner.className = 'v-feedback info show';

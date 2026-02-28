@@ -12,6 +12,10 @@ sudo docker run -p 8000:8000 \
   vault-api
 ```
 
+Como iniciar docker -> copiar y pegar:
+docker build -t zk-vault-api .
+docker run -p 8000:8000 -e SECRET_KEY=test123 -e DATABASE_URL=sqlite:////app/vault.db --name zk-vault zk-vault-api
+
 **Windows** (PowerShell o CMD; con [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado):
 ```powershell
 docker build -t vault-api .
