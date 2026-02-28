@@ -26,6 +26,54 @@ No hace falta `sudo`. Para generar una clave aleatoria en PowerShell: `-join ((4
 API en **http://localhost:8000**. La extensión ya apunta ahí por defecto.
 
 
+## Arrancar localmente (recomendado para desarrollo y para ejecutar la Vault "siempre" en tu máquina)
+
+1. Genera un `.env` local seguro usando el script incluido:
+
+```bash
+./scripts/init_env.sh
+```
+
+Esto crea un `.env` en la raíz del proyecto con un `SECRET_KEY` fuerte y `DATABASE_URL` apuntando a `./vault.db`.
+
+2. Instala dependencias en un virtualenv y ejecuta la app:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+3. Para mantener la Vault corriendo localmente de forma persistente puedes usar `systemd` (Linux) o `tmux`/`screen`. Ejemplo de servicio systemd (ejecuta como tu usuario):
+
+Create `/etc/systemd/user/vault.service` (o en `~/.config/systemd/user/vault.service`):
+
+```ini
+[Unit]
+Description=Zero-Knowledge Vault (user service)
+
+[Service]
+WorkingDirectory=%h/Escritorio/Hackaton2026/HackUDC2026/HackUDC2026
+EnvironmentFile=%h/Escritorio/Hackaton2026/HackUDC2026/HackUDC2026/.env
+ExecStart=%h/Escritorio/Hackaton2026/HackUDC2026/HackUDC2026/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+```
+
+Enable and start the user service:
+
+```bash
+systemctl --user daemon-reload
+systemctl --user enable --now vault.service
+```
+
+Si prefieres Docker pero que corra localmente "siempre", crea un `docker-compose.yml` con un volumen y usa `docker compose up -d`.
+
+
 ## Producción
 
 | Qué | Dónde |

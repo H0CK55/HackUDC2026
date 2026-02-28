@@ -31,7 +31,14 @@ function ensureSecureApi(feedbackId) {
    UTILS: crypto helpers
 ───────────────────────────────────────────── */
 function buf2hex(b) { return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2,'0')).join(''); }
-function hex2buf(h) { return new Uint8Array(h.match(/.{1,2}/g).map(b => parseInt(b,16))); }
+function hex2buf(h) {
+  if (!h && h !== '') throw new Error('hex2buf: empty input');
+  const s = String(h).replace(/\s+/g, '');
+  if (s.length === 0) throw new Error('hex2buf: empty string');
+  if (s.length % 2 !== 0) throw new Error('hex2buf: odd-length hex string');
+  if (!/^[0-9a-fA-F]+$/.test(s)) throw new Error('hex2buf: invalid hex characters');
+  return new Uint8Array(s.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+}
 
 async function derivarMEK(password, salt) {
   const km = await crypto.subtle.importKey("raw", encoder.encode(password), { name:"PBKDF2" }, false, ["deriveBits","deriveKey"]);
