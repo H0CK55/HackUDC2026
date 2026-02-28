@@ -1,17 +1,37 @@
 {
   "manifest_version": 3,
   "name": "HackUDC Zero-Knowledge Vault",
-  "version": "1.0",
-  "description": "Gestor de contraseñas de máxima seguridad",
+  "version": "1.2.2",
+  "description": "Gestor de contraseñas de máxima seguridad — Gradiant 2026",
+  "action": {
+    "default_title": "Abrir Bóveda",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "windows",
+    "tabs"
   ],
   "host_permissions": [
     "http://localhost:8000/*"
   ],
-  "action": {
-    "default_popup": "popup.html",
-    "default_title": "Abrir Bóveda"
-  }
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "badge.css"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ]
 }
