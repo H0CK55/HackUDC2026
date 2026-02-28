@@ -1,7 +1,7 @@
 // popup.js — HackUDC Zero-Knowledge Vault
 // Lógica completa con feedback visual rico
 
-const API_URL = "http://localhost:8000/api";
+const API_URL = (typeof window !== "undefined" && window.VAULT_API_URL) || "http://localhost:8000/api";
 let SESSION_TOKEN = null;
 let LOCAL_VK      = null;
 
@@ -511,6 +511,7 @@ async function guardarItem() {
       hideFeedback('saveFeedback');
       markInput($('sitePassConfirm'), null);
       updateSaveSectionVisibility();
+      refrescarListaBoveda(true);
     }, 1500);
 
   } catch (err) {
@@ -523,34 +524,35 @@ async function guardarItem() {
 }
 
 /* ─────────────────────────────────────────────
-   DESCARGAR BÓVEDA
+   DESCARGAR / REFRESCAR BÓVEDA
 ───────────────────────────────────────────── */
-$('btnDescargar').addEventListener('click', descargarBoveda);
+$('btnDescargar').addEventListener('click', () => descargarBoveda());
 
-async function descargarBoveda() {
-  if (!LOCAL_VK || !SESSION_TOKEN) {
-    showFeedback('listFeedback','err','Inicia sesión primero.');
-    return;
-  }
+/** Refresca la lista de la bóveda (fetch + descifrar + render). silent = true no muestra loading ni logs. */
+async function refrescarListaBoveda(silent = false) {
+  if (!LOCAL_VK || !SESSION_TOKEN) return;
   const btn  = $('btnDescargar');
   const list = $('itemsList');
 
-  setLoading(btn, true);
-  hideFeedback('listFeedback');
-  list.innerHTML = '';
-  logLine('⬇️ Descargando bóveda cifrada...');
+  if (!silent) {
+    setLoading(btn, true);
+    hideFeedback('listFeedback');
+    list.innerHTML = '';
+    logLine('⬇️ Descargando bóveda cifrada...');
+  }
 
   try {
     const res = await fetch(`${API_URL}/vault`, {
       headers: { 'Authorization': `Bearer ${SESSION_TOKEN}` }
     });
     if (!res.ok) throw new Error('No se pudo obtener la bóveda.');
-
     const items = await res.json();
-    logLine(`ℹ️ ${items.length} ítem(s) encontrado(s).`);
+
+    list.innerHTML = '';
+    if (!silent) logLine(`ℹ️ ${items.length} ítem(s) encontrado(s).`);
 
     if (items.length === 0) {
-      showFeedback('listFeedback','info','La bóveda está vacía.');
+      if (!silent) showFeedback('listFeedback','info','La bóveda está vacía.');
       return;
     }
 
@@ -560,24 +562,35 @@ async function descargarBoveda() {
           { name:'AES-GCM', iv: hex2buf(item.nonce) }, LOCAL_VK, hex2buf(item.encrypted_payload)
         );
         const text = decoder.decode(buf);
-        let logDesc = 'Ítem descifrado';
-        try {
-          const parsed = JSON.parse(text);
-          if (parsed.site) logDesc = `🔓 ${parsed.site}`;
-        } catch {}
-        logLine(logDesc);
+        if (!silent) {
+          let logDesc = 'Ítem descifrado';
+          try {
+            const parsed = JSON.parse(text);
+            if (parsed.site) logDesc = `🔓 ${parsed.site}`;
+          } catch {}
+          logLine(logDesc);
+        }
         renderItem(item.id, text, i * 70);
       } catch {
-        logLine(`❌ Error descifrando [${item.id}]`);
+        if (!silent) logLine(`❌ Error descifrando [${item.id}]`);
       }
     }
-
   } catch (err) {
-    showFeedback('listFeedback','err', err.message);
-    logLine(`❌ ${err.message}`);
+    if (!silent) {
+      showFeedback('listFeedback','err', err.message);
+      logLine(`❌ ${err.message}`);
+    }
   } finally {
-    setLoading(btn, false);
+    if (!silent) setLoading(btn, false);
   }
+}
+
+async function descargarBoveda() {
+  if (!LOCAL_VK || !SESSION_TOKEN) {
+    showFeedback('listFeedback','err','Inicia sesión primero.');
+    return;
+  }
+  await refrescarListaBoveda(false);
 }
 
 function renderItem(id, text, delay = 0) {

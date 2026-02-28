@@ -1,14 +1,30 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import secrets
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import UserDB
 from ..schemas import UserRegister, UserLogin
 from ..auth import get_password_hash, verify_mah, create_access_token
+from ..rate_limit import rate_limit_auth, rate_limit_salt
 
 router = APIRouter(prefix="/api", tags=["Users"])
 
+
+async def _rate_limit_auth_dep(request: Request) -> None:
+    await rate_limit_auth(request)
+
+
+async def _rate_limit_salt_dep(request: Request) -> None:
+    await rate_limit_salt(request)
+
+
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-async def register(user: UserRegister, db: Session = Depends(get_db)):
+async def register(
+    user: UserRegister,
+    request: Request,
+    db: Session = Depends(get_db),
+    _: None = Depends(_rate_limit_auth_dep),
+):
     # normalize email to lowercase to avoid dupes
     email = user.email.strip().lower()
     if db.query(UserDB).filter(UserDB.email == email).first():
@@ -25,16 +41,27 @@ async def register(user: UserRegister, db: Session = Depends(get_db)):
     return {"msg": "Usuario registrado exitosamente"}
 
 @router.get("/salt/{email}")
-async def get_salt(email: str, db: Session = Depends(get_db)):
-    # email lookup normalized
+async def get_salt(
+    email: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    _: None = Depends(_rate_limit_salt_dep),
+):
+    # Misma respuesta 200 si existe o no (evita enumeración de usuarios)
     normalized = email.strip().lower()
     user = db.query(UserDB).filter(UserDB.email == normalized).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    return {"client_salt": user.client_salt}
+    if user:
+        return {"client_salt": user.client_salt}
+    # Usuario no existe: devolver salt aleatorio para que login falle después sin revelar nada
+    return {"client_salt": secrets.token_hex(32)}
 
 @router.post("/login")
-async def login(user: UserLogin, db: Session = Depends(get_db)):
+async def login(
+    user: UserLogin,
+    request: Request,
+    db: Session = Depends(get_db),
+    _: None = Depends(_rate_limit_auth_dep),
+):
     # normalize email like register
     email = user.email.strip().lower()
     db_user = db.query(UserDB).filter(UserDB.email == email).first()
