@@ -269,6 +269,26 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+function isValidEmail(email) {
+  return /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(email);
+}
+
+function parseApiError(e, fallback) {
+  if (!e) return fallback;
+  if (typeof e.detail === 'string') return e.detail;
+  if (Array.isArray(e.detail)) {
+    const msgs = e.detail.map(err => {
+      const field = Array.isArray(err.loc) ? err.loc[err.loc.length - 1] : '';
+      if (field === 'email') return 'Introduce un email válido.';
+      if (field === 'mah') return 'La contraseña introducida no es válida.';
+      if (field === 'client_salt' || field === 'encrypted_vk') return 'Error en los datos de cifrado.';
+      return err.msg || fallback;
+    });
+    return msgs.filter(Boolean).join(' ') || fallback;
+  }
+  return fallback;
+}
+
 document.querySelectorAll('.v-tab').forEach(tab => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.v-tab').forEach(t => t.classList.remove('active'));
@@ -409,6 +429,12 @@ async function iniciarSesion() {
     shake($('loginForm'));
     return;
   }
+  if (!isValidEmail(email)) {
+    showFeedback('loginFeedback','err','Introduce un email válido (ej: usuario@dominio.com).');
+    markInput($('email'), 'error');
+    shake($('email').closest('.v-field'));
+    return;
+  }
 
   setLoading(btn, true);
   logLine('⏳ Conectando con el servidor...');
@@ -457,10 +483,11 @@ async function iniciarSesion() {
 
   } catch (err) {
     markInput($('masterPass'), 'error');
-    showFeedback('loginFeedback','err', err.message || 'Error de conexión.');
+    const msg = err.message || 'No se pudo conectar con el servidor.';
+    showFeedback('loginFeedback','err', msg);
     shake($('masterPassField'));
     shake($('loginFeedback'));
-    logLine(`❌ ${err.message}`);
+    logLine(`❌ ${msg}`);
     setStatus('error');
     setTimeout(() => setStatus('offline'), 2000);
   } finally {
@@ -485,6 +512,12 @@ async function registrar() {
   if (!email || !pass) {
     showFeedback('regFeedback','err','Todos los campos son obligatorios.');
     shake($('panel-register'));
+    return;
+  }
+  if (!isValidEmail(email)) {
+    showFeedback('regFeedback','err','Introduce un email válido (ej: usuario@dominio.com).');
+    markInput($('regEmail'), 'error');
+    shake($('regEmail').closest('.v-field'));
     return;
   }
   if (pass !== confirm) {
@@ -524,7 +557,7 @@ async function registrar() {
       })
     });
 
-    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Error al registrar.'); }
+    if (!res.ok) { const e = await res.json(); throw new Error(parseApiError(e, 'Error al registrar.')); }
 
     markInput($('regEmail'), 'success');
     markInput($('regPass'),  'success');
@@ -983,7 +1016,7 @@ async function cambiarPasswordMaestra() {
 
     if (!res.ok) {
       const err = await res.json();
-      throw new Error(err.detail || 'Error al cambiar la contraseña.');
+      throw new Error(parseApiError(err, 'Error al cambiar la contraseña.'));
     }
 
     showFeedback('cambiarPassFeedback', 'ok', '✅ Contraseña maestra actualizada.');
