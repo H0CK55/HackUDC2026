@@ -436,9 +436,12 @@ async function guardarItem() {
       { name:'AES-GCM', iv }, LOCAL_VK, encoder.encode(payload)
     );
 
-    const res = await fetch(`${API_URL}/vault?token=${SESSION_TOKEN}`, {
+    const res = await fetch(`${API_URL}/vault`, {
       method: 'POST',
-      headers: { 'Content-Type':'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SESSION_TOKEN}`
+      },
       body: JSON.stringify({ encrypted_payload: buf2hex(cifrado), nonce: buf2hex(iv) })
     });
 
@@ -487,7 +490,9 @@ async function descargarBoveda() {
   logLine('⬇️ Descargando bóveda cifrada...');
 
   try {
-    const res = await fetch(`${API_URL}/vault?token=${SESSION_TOKEN}`);
+    const res = await fetch(`${API_URL}/vault`, {
+      headers: { 'Authorization': `Bearer ${SESSION_TOKEN}` }
+    });
     if (!res.ok) throw new Error('No se pudo obtener la bóveda.');
 
     const items = await res.json();

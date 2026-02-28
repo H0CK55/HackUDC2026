@@ -10,6 +10,7 @@ app = FastAPI(title="Zero-Knowledge Vault API")
 
 app.add_middleware(
     CORSMiddleware,
+    # in production replace '*' with your frontend URL(s), e.g. ['https://example.com']
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
