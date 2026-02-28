@@ -436,9 +436,10 @@ async function iniciarSesion() {
     $('itemsList').innerHTML = '';
     unlockVaultUI();
 
-    setTimeout(() => {
+    setTimeout(async () => {
       document.querySelector('[data-tab="vault"]').click();
       refrescarListaBoveda(true);
+      await handlePendingCredential();
     }, 900);
 
   } catch (err) {
@@ -963,6 +964,40 @@ async function cambiarPasswordMaestra() {
   }
 }
 
+// ── CREDENCIAL PENDIENTE (detectada en formulario web) ────────
+async function handlePendingCredential() {
+  const data = await chrome.storage.local.get('pendingSaveCredential');
+  if (!data.pendingSaveCredential) return;
+
+  const { site, password } = data.pendingSaveCredential;
+
+  if (SESSION_TOKEN && LOCAL_VK) {
+    // Sesión activa → ir al tab Bóveda, pre-rellenar y pedir confirmación
+    await chrome.storage.local.remove('pendingSaveCredential');
+
+    document.querySelector('[data-tab="vault"]').click();
+
+    // Aplicar dominio si no está ya establecido
+    if (site && (!$('siteUrl').value || $('siteUrl').value.trim() === '')) {
+      applyDomain(site);
+    }
+
+    // Pre-rellenar la contraseña detectada
+    setNativeValue($('sitePass'), password);
+
+    showFeedback('step1Feedback', 'info', `Contraseña detectada de "${escapeHtml(site)}". Revisa y guarda.`);
+    logLine(`🌐 Contraseña detectada en formulario: ${site}`);
+    await updateSaveSectionVisibility();
+  } else {
+    // Sin sesión → mostrar banner en el panel de acceso
+    const banner = $('pendingCredentialBanner');
+    if (banner) {
+      banner.className = 'v-feedback info show';
+      banner.innerHTML = `<span>ℹ</span> Contraseña detectada en <strong>${escapeHtml(site)}</strong>. Inicia sesión para guardarla.`;
+    }
+  }
+}
+
 // ── LOGOUT ────────────────────────────────────────────────────
 $('btnLogout').addEventListener('click', async () => {
   await clearSession();
@@ -992,4 +1027,5 @@ $('searchInput').addEventListener('input', () => {
     unlockVaultUI();
     refrescarListaBoveda(true);
   }
+  await handlePendingCredential();
 })();

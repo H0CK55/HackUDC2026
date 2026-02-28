@@ -548,3 +548,121 @@
   .cg-domain-dot { animation: none !important; }
   .cg-panel::after { animation: none !important; }
 }
+
+/* ─── SAVE TOAST NOTIFICATION ─────────────────────────── */
+.cg-save-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 20px;
+  width: 290px;
+  background: var(--v-card);
+  border: 1px solid var(--v-border-glow);
+  border-radius: var(--v-radius);
+  padding: 14px 16px;
+  box-shadow: var(--v-shadow), 0 0 24px rgba(99,102,241,.18);
+  font-family: var(--v-font-mono);
+  z-index: 2147483647;
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.25s ease, transform 0.28s cubic-bezier(.16,1,.3,1);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: auto;
+}
+
+.cg-save-toast.cg-toast-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.cg-toast-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cg-toast-logo {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.cg-toast-title {
+  font-family: var(--v-font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--v-accent);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  flex: 1;
+}
+
+.cg-toast-close {
+  background: none;
+  border: none;
+  color: var(--v-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  transition: color 0.15s ease, background 0.15s ease;
+  line-height: 1;
+}
+
+.cg-toast-close:hover {
+  color: var(--v-text);
+  background: rgba(255,255,255,.06);
+}
+
+.cg-toast-body {
+  font-size: 12px;
+  color: var(--v-text);
+  line-height: 1.5;
+  letter-spacing: .02em;
+}
+
+.cg-toast-body strong {
+  color: var(--v-accent2);
+}
+
+.cg-toast-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.cg-toast-btn {
+  flex: 1;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-family: var(--v-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.cg-toast-save {
+  background: linear-gradient(135deg, rgba(99,102,241,.2), rgba(99,102,241,.1));
+  border-color: rgba(99,102,241,.45);
+  color: var(--v-accent);
+}
+
+.cg-toast-save:hover {
+  border-color: var(--v-accent);
+  background: linear-gradient(135deg, rgba(99,102,241,.3), rgba(99,102,241,.15));
+  box-shadow: 0 0 12px rgba(99,102,241,.3);
+}
+
+.cg-toast-ignore {
+  background: rgba(255,255,255,.03);
+  border-color: rgba(255,255,255,.08);
+  color: var(--v-muted);
+}
+
+.cg-toast-ignore:hover {
+  color: var(--v-text);
+  border-color: rgba(255,255,255,.15);
+}

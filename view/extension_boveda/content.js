@@ -161,4 +161,79 @@
     return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
+  // ─── 6. DETECCIÓN DE FORMULARIOS CON CONTRASEÑA ────────────
+  function dismissSaveToast(toast) {
+    if (!toast) return;
+    toast.classList.remove('cg-toast-visible');
+    setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 300);
+  }
+
+  function showSaveToast(hostname, password) {
+    const existing = document.getElementById('cg-save-toast');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.id = 'cg-save-toast';
+    toast.className = 'cg-save-toast';
+    toast.innerHTML = `
+      <div class="cg-toast-header">
+        <span class="cg-toast-logo">🛡️</span>
+        <span class="cg-toast-title">VoidVault</span>
+        <button class="cg-toast-close" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="cg-toast-body">¿Guardar la contraseña de <strong>${escapeHtml(hostname)}</strong> en tu bóveda?</div>
+      <div class="cg-toast-actions">
+        <button class="cg-toast-btn cg-toast-save">Guardar</button>
+        <button class="cg-toast-btn cg-toast-ignore">Ignorar</button>
+      </div>
+    `;
+
+    document.body.appendChild(toast);
+
+    // Doble rAF para asegurar que el transition se aplica
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => toast.classList.add('cg-toast-visible'));
+    });
+
+    const autoDismiss = setTimeout(() => dismissSaveToast(toast), 15000);
+
+    toast.querySelector('.cg-toast-close').addEventListener('click', () => {
+      clearTimeout(autoDismiss);
+      dismissSaveToast(toast);
+    });
+
+    toast.querySelector('.cg-toast-ignore').addEventListener('click', () => {
+      clearTimeout(autoDismiss);
+      dismissSaveToast(toast);
+    });
+
+    toast.querySelector('.cg-toast-save').addEventListener('click', () => {
+      clearTimeout(autoDismiss);
+      dismissSaveToast(toast);
+      chrome.runtime.sendMessage({ type: 'SAVE_CREDENTIAL_PROMPT', site: hostname, password });
+    });
+  }
+
+  function listenForPasswordForms() {
+    document.addEventListener('submit', (ev) => {
+      const form = ev.target;
+      if (!form || form.tagName !== 'FORM') return;
+
+      const passInputs = form.querySelectorAll('input[type="password"]');
+      if (passInputs.length === 0) return;
+
+      // Tomar la primera contraseña no vacía
+      let password = '';
+      for (const inp of passInputs) {
+        if (inp.value) { password = inp.value; break; }
+      }
+      if (!password) return;
+
+      const hostname = location.hostname.replace(/^www\./, '');
+      showSaveToast(hostname, password);
+    }, true); // fase de captura para que se ejecute antes de la navegación
+  }
+
+  listenForPasswordForms();
+
 })();

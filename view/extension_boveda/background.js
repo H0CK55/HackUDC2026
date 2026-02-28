@@ -50,22 +50,30 @@ async function _getCredentials(hostname) {
   }
 }
 
+async function _openPopup() {
+  try {
+    await chrome.action.openPopup();
+  } catch {
+    chrome.windows.create({
+      url: chrome.runtime.getURL('popup.html'),
+      type: 'popup',
+      width: 400,
+      height: 600,
+      focused: true,
+    });
+  }
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'OPEN_VAULT') {
     const domain = message.domain || '';
-    chrome.storage.local.set({ pendingDomain: domain }, async () => {
-      try {
-        await chrome.action.openPopup();
-      } catch {
-        chrome.windows.create({
-          url: chrome.runtime.getURL('popup.html'),
-          type: 'popup',
-          width: 400,
-          height: 600,
-          focused: true,
-        });
-      }
-    });
+    chrome.storage.local.set({ pendingDomain: domain }, () => _openPopup());
+    sendResponse({ ok: true });
+  }
+
+  if (message.type === 'SAVE_CREDENTIAL_PROMPT') {
+    const { site, password } = message;
+    chrome.storage.local.set({ pendingSaveCredential: { site, password } }, () => _openPopup());
     sendResponse({ ok: true });
   }
 
