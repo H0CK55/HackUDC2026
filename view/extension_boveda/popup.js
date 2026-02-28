@@ -1,6 +1,3 @@
-// popup.js — HackUDC Zero-Knowledge Vault
-// Lógica completa con feedback visual rico
-
 const API_URL = (typeof window !== "undefined" && window.VAULT_API_URL) || "http://localhost:8000/api";
 let SESSION_TOKEN = null;
 let LOCAL_VK      = null;
@@ -27,9 +24,6 @@ function ensureSecureApi(feedbackId) {
   return false;
 }
 
-/* ─────────────────────────────────────────────
-   UTILS: crypto helpers
-───────────────────────────────────────────── */
 function buf2hex(b) { return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2,'0')).join(''); }
 function hex2buf(h) {
   if (!h && h !== '') throw new Error('hex2buf: empty input');
@@ -52,9 +46,96 @@ async function derivarMAH(mek) {
   return buf2hex(await crypto.subtle.sign("HMAC", hmac, encoder.encode("autenticacion")));
 }
 
-/* ─────────────────────────────────────────────
-   UTILS: UI helpers
-───────────────────────────────────────────── */
+/* Sesión persistente en chrome.storage.session:
+   la VK se exporta como raw hex junto con el JWT.
+   El storage se limpia automáticamente al cerrar el navegador. */
+async function saveSession(token, vkKey) {
+  const rawVK = await crypto.subtle.exportKey("raw", vkKey);
+  await chrome.storage.session.set({ sessionToken: token, vkHex: buf2hex(rawVK) });
+}
+
+async function restoreSession() {
+  try {
+    const data = await chrome.storage.session.get(['sessionToken', 'vkHex']);
+    if (data.sessionToken && data.vkHex) {
+      SESSION_TOKEN = data.sessionToken;
+      LOCAL_VK = await crypto.subtle.importKey(
+        "raw", hex2buf(data.vkHex), { name: "AES-GCM" }, true, ["encrypt", "decrypt"]
+      );
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
+async function clearSession() {
+  SESSION_TOKEN = null;
+  LOCAL_VK = null;
+  await chrome.storage.session.remove(['sessionToken', 'vkHex']);
+}
+
+/* HIBP Pwned Passwords — k-Anonymity:
+   Solo se envían los primeros 5 chars del hash SHA-1.
+   La API devuelve ~800 hashes con ese prefijo y se compara localmente.
+   La contraseña nunca sale del navegador. */
+async function sha1hex(str) {
+  const buf = await crypto.subtle.digest('SHA-1', encoder.encode(str));
+  return buf2hex(buf).toUpperCase();
+}
+
+async function checkHIBP(password) {
+  const hash   = await sha1hex(password);
+  const prefix = hash.slice(0, 5);
+  const suffix = hash.slice(5);
+  const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
+    headers: { 'Add-Padding': 'true' }
+  });
+  if (!res.ok) throw new Error('Error consultando HIBP');
+  const text = await res.text();
+  for (const line of text.split('\n')) {
+    const [s, count] = line.trim().split(':');
+    if (s === suffix) return parseInt(count, 10);
+  }
+  return 0;
+}
+
+function showBreachResult(badgeId, count) {
+  const el = $(badgeId);
+  if (count === 0) {
+    el.className = 'v-breach safe show';
+    el.textContent = '✔ No encontrada en filtraciones conocidas';
+  } else {
+    const fmt = count.toLocaleString('es-ES');
+    el.className = 'v-breach pwned show';
+    el.textContent = `⚠ Filtrada ${fmt} veces — elige otra contraseña`;
+  }
+}
+
+function hideBreachBadge(badgeId) {
+  $(badgeId).className = 'v-breach';
+}
+
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+const _checkBreachFor = (badgeId) => debounce(async (pass) => {
+  if (!pass) { hideBreachBadge(badgeId); return; }
+  const el = $(badgeId);
+  el.className = 'v-breach checking show';
+  el.textContent = '⏳ Comprobando filtraciones...';
+  try {
+    showBreachResult(badgeId, await checkHIBP(pass));
+    logLine($(badgeId).classList.contains('pwned')
+      ? `⚠ Contraseña filtrada detectada en HIBP`
+      : `✔ Contraseña no encontrada en filtraciones HIBP`);
+  } catch { hideBreachBadge(badgeId); }
+}, 500);
+
+const checkBreachSite = _checkBreachFor('breachBadge');
+const checkBreachEdit = _checkBreachFor('editBreachBadge');
+
 function $(id) { return document.getElementById(id); }
 
 function logLine(msg) {
@@ -76,6 +157,7 @@ function showFeedback(id, type, msg) {
   const icon = type === 'err' ? '✖' : type === 'ok' ? '✔' : 'ℹ';
   el.innerHTML = `<span>${icon}</span> ${escapeHtml(String(msg))}`;
 }
+
 function hideFeedback(id) {
   const el = $(id);
   el.className = 'v-feedback';
@@ -128,9 +210,6 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-/* ─────────────────────────────────────────────
-   TABS
-───────────────────────────────────────────── */
 document.querySelectorAll('.v-tab').forEach(tab => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.v-tab').forEach(t => t.classList.remove('active'));
@@ -141,9 +220,6 @@ document.querySelectorAll('.v-tab').forEach(tab => {
   });
 });
 
-/* ─────────────────────────────────────────────
-   PASSWORD TOGGLES
-───────────────────────────────────────────── */
 function setupEye(eyeId, inputId) {
   const eye   = $(eyeId);
   const input = $(inputId);
@@ -159,9 +235,9 @@ setupEye('eyeToggleReg',      'regPass');
 setupEye('eyeSitePass',       'sitePass');
 setupEye('eyeSitePassConfirm','sitePassConfirm');
 
-/* ─────────────────────────────────────────────
-   STRENGTH METER
-───────────────────────────────────────────── */
+$('sitePass').addEventListener('input', () => checkBreachSite($('sitePass').value));
+$('editNewPass').addEventListener('input', () => checkBreachEdit($('editNewPass').value));
+
 $('regPass').addEventListener('input', evalStrength);
 
 function evalStrength() {
@@ -189,12 +265,6 @@ function evalStrength() {
   label.style.color     = lvl.color;
 }
 
-/* ─────────────────────────────────────────────
-   DOMAIN AUTO-DETECT
-   1. Lee pendingDomain (puesto por content.js)
-   2. Si no hay, consulta la pestaña activa
-   3. Inyecta el dominio en el campo oculto y lo muestra
-───────────────────────────────────────────── */
 function normalizeDomain(domain) {
   if (!domain) return '';
   return domain.toLowerCase().replace(/^www\./, '').trim();
@@ -202,37 +272,28 @@ function normalizeDomain(domain) {
 
 function applyDomain(domain) {
   if (!domain) return;
-
-  // Campo oculto que usará guardarItem()
   $('siteUrl').value = domain;
-
-  // Badge del header
   $('domainText').textContent = `Sitio: ${domain}`;
   $('domainBadge').classList.add('show');
-
-  // Pill en el paso 1 del formulario
   $('detectedSiteLabel').textContent = domain;
   $('detectedSite').style.display = 'flex';
-
-  // Pill de confirmación en paso 2
   $('confirmSiteLabel').textContent = domain;
-
   logLine(`🌐 Dominio detectado: ${domain}`);
   updateSaveSectionVisibility();
 }
 
-// Primero intentamos pendingDomain (viene del badge en la página)
+// Primero pendingDomain (inyectado por content.js al clicar el badge en la página),
+// si no hay, se lee la URL de la pestaña activa como fallback.
 chrome.storage.local.get('pendingDomain', ({ pendingDomain }) => {
   if (pendingDomain) {
     applyDomain(pendingDomain);
     chrome.storage.local.remove('pendingDomain');
   } else {
-    // Fallback: leer la URL de la pestaña activa
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs && tabs[0] && tabs[0].url) {
         try {
           const url = new URL(tabs[0].url);
-          // Ignorar páginas internas del navegador
+          // Ignorar páginas internas del navegador (chrome://, about:, etc.)
           if (url.protocol === 'http:' || url.protocol === 'https:') {
             applyDomain(url.hostname.replace(/^www\./, ''));
           }
@@ -242,9 +303,6 @@ chrome.storage.local.get('pendingDomain', ({ pendingDomain }) => {
   }
 });
 
-/* ─────────────────────────────────────────────
-   VISIBILIDAD "GUARDAR": ocultar si ya hay credencial para este sitio
-───────────────────────────────────────────── */
 async function siteAlreadyInVault(domain) {
   if (!LOCAL_VK || !SESSION_TOKEN || !domain) return false;
   try {
@@ -271,14 +329,8 @@ async function updateSaveSectionVisibility() {
   const block = $('saveCredentialBlock');
   if (!block) return;
   const domain = $('siteUrl') && $('siteUrl').value ? $('siteUrl').value.trim() : '';
-  if (!domain) {
-    block.style.display = '';
-    return;
-  }
-  if (!LOCAL_VK || !SESSION_TOKEN) {
-    block.style.display = '';
-    return;
-  }
+  if (!domain) { block.style.display = ''; return; }
+  if (!LOCAL_VK || !SESSION_TOKEN) { block.style.display = ''; return; }
   const alreadySaved = await siteAlreadyInVault(domain);
   block.style.display = alreadySaved ? 'none' : '';
   if (alreadySaved) {
@@ -287,9 +339,6 @@ async function updateSaveSectionVisibility() {
   }
 }
 
-/* ─────────────────────────────────────────────
-   LOGIN
-───────────────────────────────────────────── */
 $('btnIniciar').addEventListener('click', iniciarSesion);
 $('masterPass').addEventListener('keydown', e => { if (e.key === 'Enter') iniciarSesion(); });
 
@@ -339,6 +388,8 @@ async function iniciarSesion() {
     );
     LOCAL_VK = await crypto.subtle.importKey("raw", vkBuffer, { name:"AES-GCM" }, true, ["encrypt","decrypt"]);
 
+    await saveSession(SESSION_TOKEN, LOCAL_VK);
+
     markInput($('email'),      'success');
     markInput($('masterPass'), 'success');
     showFeedback('loginFeedback','ok','Bóveda desbloqueada correctamente.');
@@ -360,9 +411,6 @@ async function iniciarSesion() {
   }
 }
 
-/* ─────────────────────────────────────────────
-   REGISTER
-───────────────────────────────────────────── */
 $('btnRegistrar').addEventListener('click', registrar);
 
 async function registrar() {
@@ -401,7 +449,7 @@ async function registrar() {
   logLine('⚙️ Generando claves criptográficas...');
 
   try {
-    const newSalt = 'sal_' + Date.now();
+    const newSalt = buf2hex(crypto.getRandomValues(new Uint8Array(32)));
     const mek = await derivarMEK(pass, email + newSalt);
     const mah = await derivarMAH(mek);
 
@@ -440,11 +488,6 @@ async function registrar() {
   }
 }
 
-/* ─────────────────────────────────────────────
-   GUARDAR ITEM — FLUJO 2 PASOS
-───────────────────────────────────────────── */
-
-// Paso 1 → Siguiente
 $('btnSiguiente').addEventListener('click', () => {
   const url  = $('siteUrl').value.trim();
   const pass = $('sitePass').value;
@@ -463,7 +506,6 @@ $('btnSiguiente').addEventListener('click', () => {
     return;
   }
 
-  // Avanzar a paso 2
   $('saveStep1').style.display = 'none';
   $('saveStep2').style.display = 'flex';
   $('sitePassConfirm').value = '';
@@ -472,7 +514,6 @@ $('btnSiguiente').addEventListener('click', () => {
   markInput($('sitePassConfirm'), null);
 });
 
-// Paso 2 → Volver
 $('btnVolver').addEventListener('click', () => {
   $('saveStep2').style.display = 'none';
   $('saveStep1').style.display = 'flex';
@@ -480,7 +521,6 @@ $('btnVolver').addEventListener('click', () => {
   markInput($('sitePass'), null);
 });
 
-// Paso 2 → Guardar
 $('btnGuardar').addEventListener('click', guardarItem);
 $('sitePassConfirm').addEventListener('keydown', e => { if (e.key === 'Enter') guardarItem(); });
 
@@ -511,7 +551,6 @@ async function guardarItem() {
   logLine('🔒 Cifrando credencial con AES-GCM...');
 
   try {
-    // Ciframos: "url||contraseña" como payload
     const payload = JSON.stringify({ site: url, password: pass });
     const iv      = crypto.getRandomValues(new Uint8Array(12));
     const cifrado = await crypto.subtle.encrypt(
@@ -529,7 +568,6 @@ async function guardarItem() {
 
     if (!res.ok) throw new Error('Error al guardar en servidor.');
 
-    // Éxito: resetear formulario y volver a paso 1
     markInput($('sitePassConfirm'), 'success');
     showFeedback('saveFeedback','ok',`Credencial de "${url}" guardada.`);
     logLine(`✅ Credencial de ${url} cifrada y almacenada.`);
@@ -552,12 +590,10 @@ async function guardarItem() {
   }
 }
 
-/* ─────────────────────────────────────────────
-   DESCARGAR / REFRESCAR BÓVEDA
-───────────────────────────────────────────── */
 $('btnDescargar').addEventListener('click', () => descargarBoveda());
 
-/** Refresca la lista de la bóveda (fetch + descifrar + render). silent = true no muestra loading ni logs. */
+/** Refresca la bóveda: fetch cifrado → descifrar → render.
+ *  silent=true omite indicadores de carga y logs de consola. */
 async function refrescarListaBoveda(silent = false) {
   if (!ensureSecureApi('step2Feedback')) return;
   if (!LOCAL_VK || !SESSION_TOKEN) return;
@@ -630,7 +666,7 @@ function renderItem(id, text, delay = 0) {
   el.className = 'v-item';
   el.style.animationDelay = `${delay}ms`;
 
-  // Intentar parsear como { site, password } o mostrar como texto plano
+  // Intenta parsear { site, password }; si falla muestra como texto plano
   let site = '', password = text;
   try {
     const parsed = JSON.parse(text);
@@ -652,7 +688,6 @@ function renderItem(id, text, delay = 0) {
     <button class="v-item-copy" title="Copiar contraseña">⎘</button>
   `;
 
-  // Toggle revelar contraseña
   const passEl = el.querySelector('.v-item-pass');
   let revealed = false;
   passEl.style.cursor = 'pointer';
@@ -662,12 +697,10 @@ function renderItem(id, text, delay = 0) {
     passEl.style.color = revealed ? 'var(--accent2)' : '';
   });
 
-  // Editar contraseña
   el.querySelector('.v-item-edit').addEventListener('click', () => {
     openEditModal(id, site || text);
   });
 
-  // Copiar contraseña
   el.querySelector('.v-item-copy').addEventListener('click', async () => {
     await navigator.clipboard.writeText(password);
     const copyBtn = el.querySelector('.v-item-copy');
@@ -678,9 +711,7 @@ function renderItem(id, text, delay = 0) {
 
   list.appendChild(el);
 }
-/* ─────────────────────────────────────────────
-   EDITAR CONTRASEÑA — MODAL
-───────────────────────────────────────────── */
+
 setupEye('eyeEditNew',     'editNewPass');
 setupEye('eyeEditConfirm', 'editNewPassConfirm');
 
@@ -690,6 +721,7 @@ function openEditModal(itemId, site) {
   $('editNewPass').value = '';
   $('editNewPassConfirm').value = '';
   hideFeedback('editFeedback');
+  hideBreachBadge('editBreachBadge');
   markInput($('editNewPass'), null);
   markInput($('editNewPassConfirm'), null);
   $('editOverlay').classList.add('show');
@@ -773,3 +805,12 @@ async function actualizarItem() {
     setLoading(btn, false);
   }
 }
+
+(async () => {
+  const restored = await restoreSession();
+  if (restored) {
+    logLine('🟢 Sesión restaurada automáticamente.');
+    unlockVaultUI();
+    refrescarListaBoveda(true);
+  }
+})();

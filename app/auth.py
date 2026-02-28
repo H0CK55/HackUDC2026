@@ -3,12 +3,15 @@ import bcrypt
 import jwt
 from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
+from dotenv import load_dotenv
+from pathlib import Path
 
-# Configuración desde entorno con fallbacks de seguridad
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
+
 SECRET_KEY = os.getenv("SECRET_KEY")
-# Solo permitir algoritmos seguros; ignorar ALGORITHM del entorno para evitar "none"
+# Algoritmo fijo para evitar el ataque "none" vía variable de entorno
 ALGORITHM = "HS256"
-# Convertimos a int porque las variables de entorno son siempre strings
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 15))
 
 if not SECRET_KEY:
