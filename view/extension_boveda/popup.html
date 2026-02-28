@@ -549,6 +549,18 @@
     .v-item-pass { font-size: 12px; color: var(--muted); letter-spacing: .1em; transition: color .2s; }
     .v-item-pass:hover { color: var(--text); }
 
+    /* ── BREACH BADGE (HIBP) ───────────────────────────────── */
+    .v-breach {
+      display: none; align-items: center; gap: 6px;
+      padding: 6px 10px; border-radius: 6px;
+      font-size: 11px; letter-spacing: .04em;
+      transition: all .3s var(--ease);
+    }
+    .v-breach.show    { display: flex; animation: feedbackIn .25s var(--ease) both; }
+    .v-breach.safe    { background: rgba(0,255,157,.07);  border: 1px solid rgba(0,255,157,.2);  color: var(--accent2); }
+    .v-breach.pwned   { background: rgba(255,51,88,.1);   border: 1px solid rgba(255,51,88,.3);  color: #ff6680; }
+    .v-breach.checking{ background: rgba(255,170,0,.07);  border: 1px solid rgba(255,170,0,.2);  color: var(--warn); }
+
   </style>
 </head>
 <body>
@@ -647,6 +659,8 @@
           <input class="v-input" id="sitePass" type="password" placeholder="Contraseña del sitio">
           <button class="v-eye" id="eyeSitePass" type="button">👁</button>
         </div>
+
+        <div class="v-breach" id="breachBadge"></div>
 
         <div class="v-feedback" id="step1Feedback"></div>
 
@@ -764,6 +778,7 @@
         <input class="v-input" id="editNewPass" type="password" placeholder="Nueva contraseña">
         <button class="v-eye" id="eyeEditNew" type="button">👁</button>
       </div>
+      <div class="v-breach" id="editBreachBadge"></div>
       <div class="v-field">
         <span class="v-field-icon">✔</span>
         <input class="v-input" id="editNewPassConfirm" type="password" placeholder="Confirmar nueva contraseña">

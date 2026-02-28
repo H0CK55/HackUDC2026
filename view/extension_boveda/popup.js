@@ -62,6 +62,69 @@ async function clearSession() {
 }
 
 /* ─────────────────────────────────────────────
+   HIBP: Have I Been Pwned — Pwned Passwords API
+   k-Anonymity: solo se envían los primeros 5 chars del hash SHA-1.
+   La contraseña nunca sale del navegador.
+───────────────────────────────────────────── */
+async function sha1hex(str) {
+  const buf = await crypto.subtle.digest('SHA-1', encoder.encode(str));
+  return buf2hex(buf).toUpperCase();
+}
+
+async function checkHIBP(password) {
+  const hash   = await sha1hex(password);
+  const prefix = hash.slice(0, 5);
+  const suffix = hash.slice(5);
+  const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
+    headers: { 'Add-Padding': 'true' }
+  });
+  if (!res.ok) throw new Error('Error consultando HIBP');
+  const text = await res.text();
+  for (const line of text.split('\n')) {
+    const [s, count] = line.trim().split(':');
+    if (s === suffix) return parseInt(count, 10);
+  }
+  return 0;
+}
+
+function showBreachResult(badgeId, count) {
+  const el = $(badgeId);
+  if (count === 0) {
+    el.className = 'v-breach safe show';
+    el.textContent = '✔ No encontrada en filtraciones conocidas';
+  } else {
+    const fmt = count.toLocaleString('es-ES');
+    el.className = 'v-breach pwned show';
+    el.textContent = `⚠ Filtrada ${fmt} veces — elige otra contraseña`;
+  }
+}
+
+function hideBreachBadge(badgeId) {
+  $(badgeId).className = 'v-breach';
+}
+
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+const _checkBreachFor = (badgeId) => debounce(async (pass) => {
+  if (!pass) { hideBreachBadge(badgeId); return; }
+  const el = $(badgeId);
+  el.className = 'v-breach checking show';
+  el.textContent = '⏳ Comprobando filtraciones...';
+  try {
+    showBreachResult(badgeId, await checkHIBP(pass));
+    logLine($(badgeId).classList.contains('pwned')
+      ? `⚠ Contraseña filtrada detectada en HIBP`
+      : `✔ Contraseña no encontrada en filtraciones HIBP`);
+  } catch { hideBreachBadge(badgeId); }
+}, 500);
+
+const checkBreachSite = _checkBreachFor('breachBadge');
+const checkBreachEdit = _checkBreachFor('editBreachBadge');
+
+/* ─────────────────────────────────────────────
    UTILS: UI helpers
 ───────────────────────────────────────────── */
 function $(id) { return document.getElementById(id); }
@@ -167,6 +230,9 @@ setupEye('eyeToggle',        'masterPass');
 setupEye('eyeToggleReg',      'regPass');
 setupEye('eyeSitePass',       'sitePass');
 setupEye('eyeSitePassConfirm','sitePassConfirm');
+
+$('sitePass').addEventListener('input', () => checkBreachSite($('sitePass').value));
+$('editNewPass').addEventListener('input', () => checkBreachEdit($('editNewPass').value));
 
 /* ─────────────────────────────────────────────
    STRENGTH METER
@@ -696,6 +762,7 @@ function openEditModal(itemId, site) {
   $('editNewPass').value = '';
   $('editNewPassConfirm').value = '';
   hideFeedback('editFeedback');
+  hideBreachBadge('editBreachBadge');
   markInput($('editNewPass'), null);
   markInput($('editNewPassConfirm'), null);
   $('editOverlay').classList.add('show');
