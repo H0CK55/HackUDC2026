@@ -12,7 +12,8 @@ load_dotenv(dotenv_path=env_path)
 
 # Configuración desde entorno con fallbacks de seguridad
 SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM = os.getenv("ALGORITHM", "HS256")
+# Solo permitir algoritmos seguros; ignorar ALGORITHM del entorno para evitar "none"
+ALGORITHM = "HS256"
 # Convertimos a int porque las variables de entorno son siempre strings
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 15))
 

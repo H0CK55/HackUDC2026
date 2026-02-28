@@ -47,7 +47,8 @@ function logLine(msg) {
 function showFeedback(id, type, msg) {
   const el = $(id);
   el.className = `v-feedback ${type} show`;
-  el.innerHTML = `<span>${type==='err'?'✖':type==='ok'?'✔':'ℹ'}</span> ${msg}`;
+  const icon = type === 'err' ? '✖' : type === 'ok' ? '✔' : 'ℹ';
+  el.innerHTML = `<span>${icon}</span> ${escapeHtml(String(msg))}`;
 }
 function hideFeedback(id) {
   const el = $(id);
@@ -110,6 +111,7 @@ document.querySelectorAll('.v-tab').forEach(tab => {
     document.querySelectorAll('.v-panel').forEach(p => p.classList.remove('active'));
     tab.classList.add('active');
     $(`panel-${tab.dataset.tab}`).classList.add('active');
+    if (tab.dataset.tab === 'vault') updateSaveSectionVisibility();
   });
 });
 
@@ -167,6 +169,11 @@ function evalStrength() {
    2. Si no hay, consulta la pestaña activa
    3. Inyecta el dominio en el campo oculto y lo muestra
 ───────────────────────────────────────────── */
+function normalizeDomain(domain) {
+  if (!domain) return '';
+  return domain.toLowerCase().replace(/^www\./, '').trim();
+}
+
 function applyDomain(domain) {
   if (!domain) return;
 
@@ -185,6 +192,7 @@ function applyDomain(domain) {
   $('confirmSiteLabel').textContent = domain;
 
   logLine(`🌐 Dominio detectado: ${domain}`);
+  updateSaveSectionVisibility();
 }
 
 // Primero intentamos pendingDomain (viene del badge en la página)
@@ -207,6 +215,51 @@ chrome.storage.local.get('pendingDomain', ({ pendingDomain }) => {
     });
   }
 });
+
+/* ─────────────────────────────────────────────
+   VISIBILIDAD "GUARDAR": ocultar si ya hay credencial para este sitio
+───────────────────────────────────────────── */
+async function siteAlreadyInVault(domain) {
+  if (!LOCAL_VK || !SESSION_TOKEN || !domain) return false;
+  try {
+    const res = await fetch(`${API_URL}/vault`, {
+      headers: { 'Authorization': `Bearer ${SESSION_TOKEN}` }
+    });
+    if (!res.ok) return false;
+    const items = await res.json();
+    const current = normalizeDomain(domain);
+    for (const item of items) {
+      try {
+        const buf  = await crypto.subtle.decrypt(
+          { name: 'AES-GCM', iv: hex2buf(item.nonce) }, LOCAL_VK, hex2buf(item.encrypted_payload)
+        );
+        const parsed = JSON.parse(decoder.decode(buf));
+        if (parsed && parsed.site && normalizeDomain(parsed.site) === current) return true;
+      } catch {}
+    }
+  } catch {}
+  return false;
+}
+
+async function updateSaveSectionVisibility() {
+  const block = $('saveCredentialBlock');
+  if (!block) return;
+  const domain = $('siteUrl') && $('siteUrl').value ? $('siteUrl').value.trim() : '';
+  if (!domain) {
+    block.style.display = '';
+    return;
+  }
+  if (!LOCAL_VK || !SESSION_TOKEN) {
+    block.style.display = '';
+    return;
+  }
+  const alreadySaved = await siteAlreadyInVault(domain);
+  block.style.display = alreadySaved ? 'none' : '';
+  if (alreadySaved) {
+    $('saveStep2').style.display = 'none';
+    $('saveStep1').style.display = 'flex';
+  }
+}
 
 /* ─────────────────────────────────────────────
    LOGIN
@@ -453,13 +506,11 @@ async function guardarItem() {
     logLine(`✅ Credencial de ${url} cifrada y almacenada.`);
 
     setTimeout(() => {
-      $('siteUrl').value         = '';
-      $('sitePass').value        = '';
-      $('sitePassConfirm').value = '';
       $('saveStep2').style.display = 'none';
       $('saveStep1').style.display = 'flex';
       hideFeedback('saveFeedback');
       markInput($('sitePassConfirm'), null);
+      updateSaveSectionVisibility();
     }, 1500);
 
   } catch (err) {
@@ -509,7 +560,12 @@ async function descargarBoveda() {
           { name:'AES-GCM', iv: hex2buf(item.nonce) }, LOCAL_VK, hex2buf(item.encrypted_payload)
         );
         const text = decoder.decode(buf);
-        logLine(`🔓 [${item.id}]: ${text}`);
+        let logDesc = 'Ítem descifrado';
+        try {
+          const parsed = JSON.parse(text);
+          if (parsed.site) logDesc = `🔓 ${parsed.site}`;
+        } catch {}
+        logLine(logDesc);
         renderItem(item.id, text, i * 70);
       } catch {
         logLine(`❌ Error descifrando [${item.id}]`);
@@ -544,7 +600,6 @@ function renderItem(id, text, delay = 0) {
   const maskedPass  = '•'.repeat(Math.min(password.length, 12));
 
   el.innerHTML = `
-    <span class="v-item-id">#${id}</span>
     <span class="v-item-val">
       ${displaySite}
       <span class="v-item-pass" data-pass="${escapeHtml(password)}" title="Clic para revelar">${maskedPass}</span>

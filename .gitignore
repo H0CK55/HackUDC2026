@@ -36,3 +36,7 @@ htmlcov/
 
 *.pem
 *.key
+
+# Base de datos local (puede contener datos sensibles)
+vault.db
+*.db

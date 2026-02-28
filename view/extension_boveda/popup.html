@@ -450,7 +450,6 @@
       from { opacity:0; transform: translateX(-6px); }
       to   { opacity:1; transform: translateX(0); }
     }
-    .v-item-id { color: var(--muted); flex-shrink: 0; }
     .v-item-val { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .v-item-copy {
       background: none; border: 1px solid var(--border);
@@ -599,6 +598,8 @@
     <!-- Unlocked state -->
     <div id="vaultUnlocked" style="display:none; flex-direction:column; gap:12px;">
 
+      <!-- Bloque "Nueva credencial": se oculta si ya hay contraseña para este sitio -->
+      <div id="saveCredentialBlock">
       <!-- ── PASO 1: URL + contraseña ──────────────────────── -->
       <div id="saveStep1" style="display:flex; flex-direction:column; gap:10px;">
         <div class="v-step-indicator">
@@ -659,6 +660,9 @@
       </div>
 
       <div class="v-feedback" id="saveFeedback"></div>
+
+      </div>
+      <!-- /saveCredentialBlock -->
 
       <hr class="v-divider">
 

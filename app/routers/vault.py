@@ -29,6 +29,7 @@ async def get_vault(
     email = get_current_user(jwt_token)
     return db.query(VaultItemDB).filter(VaultItemDB.user_email == email).all()
 
+@router.post("")
 @router.post("/")
 async def add_vault_item(
     item: VaultItem,
