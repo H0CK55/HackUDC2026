@@ -225,6 +225,17 @@ function unlockVaultUI() {
   $('tabVault').style.color = 'var(--accent2)';
   const email = getEmailFromToken();
   if (email) $('userEmailLabel').textContent = email;
+  
+  // Hide auth and register tabs when logged in
+  document.querySelectorAll('.v-tab').forEach(tab => {
+    if (tab.dataset.tab === 'auth' || tab.dataset.tab === 'register') {
+      tab.style.display = 'none';
+    }
+  });
+  
+  // Automatically switch to vault tab
+  document.querySelector('[data-tab="vault"]').click();
+  
   resetInactivityTimer();
 }
 
@@ -233,9 +244,18 @@ function lockVaultUI() {
   $('vaultUnlocked').style.display = 'none';
   setStatus('offline');
   $('tabVault').style.color = '';
+  
+  // Show auth and register tabs when logged out
+  document.querySelectorAll('.v-tab').forEach(tab => {
+    if (tab.dataset.tab === 'auth' || tab.dataset.tab === 'register') {
+      tab.style.display = '';
+    }
+  });
+  
   clearTimeout(_inactivityTimer);
   _inactivityTimer = null;
 }
+
 
 async function apiFetch(url, options = {}) {
   const res = await fetch(url, options);
