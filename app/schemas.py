@@ -35,6 +35,13 @@ class UserLogin(BaseModel):
             raise ValueError('Formato de email inválido')
         return normalized
 
+class ChangePassword(BaseModel):
+    old_mah: str = Field(..., max_length=512)
+    new_mah: str = Field(..., max_length=512)
+    new_encrypted_vk: str = Field(..., max_length=MAX_SALT_VK_LEN)
+    new_client_salt: str = Field(..., max_length=MAX_SALT_VK_LEN)
+
+
 class VaultItem(BaseModel):
     id: Optional[int] = None
     encrypted_payload: str = Field(..., max_length=MAX_PAYLOAD_HEX)

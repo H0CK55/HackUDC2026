@@ -1,11 +1,12 @@
 import secrets
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Header, Request, status
 from sqlalchemy.orm import Session
+from typing import Optional
 from ..database import get_db
 from ..models import UserDB
-from ..schemas import UserRegister, UserLogin
-from ..auth import get_password_hash, verify_mah, create_access_token
+from ..schemas import UserRegister, UserLogin, ChangePassword
+from ..auth import get_password_hash, verify_mah, create_access_token, get_current_user
 from ..rate_limit import rate_limit_auth, rate_limit_salt
 
 logger = logging.getLogger(__name__)
@@ -81,3 +82,30 @@ async def login(
         "token_type": "bearer",
         "encrypted_vk": db_user.encrypted_vk
     }
+
+@router.put("/users/password")
+async def change_password(
+    data: ChangePassword,
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+    _: None = Depends(rate_limit_auth),
+):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token inválido")
+    email = get_current_user(authorization.split(" ")[1])
+
+    db_user = db.query(UserDB).filter(UserDB.email == email).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    if not verify_mah(data.old_mah, db_user.mah_hash):
+        logger.warning("CHANGE_PASS_FAIL ip=%s email=%s reason=bad_mah", request.client.host, email)
+        raise HTTPException(status_code=401, detail="Contraseña actual incorrecta")
+
+    db_user.mah_hash = get_password_hash(data.new_mah)
+    db_user.encrypted_vk = data.new_encrypted_vk
+    db_user.client_salt = data.new_client_salt
+    db.commit()
+    logger.info("CHANGE_PASS_OK ip=%s email=%s", request.client.host, email)
+    return {"msg": "Contraseña maestra actualizada correctamente"}

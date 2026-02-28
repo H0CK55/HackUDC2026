@@ -1,6 +1,9 @@
-const API_URL     = (typeof window !== "undefined" && window.VAULT_API_URL)  || "http://localhost:8000/api";
-let SESSION_TOKEN = null;
-let LOCAL_VK      = null;
+const API_URL        = (typeof window !== "undefined" && window.VAULT_API_URL)  || "http://localhost:8000/api";
+let SESSION_TOKEN    = null;
+let LOCAL_VK         = null;
+const INACTIVITY_MS  = 15 * 60 * 1000;
+let _inactivityTimer = null;
+let _allVaultItems   = [];
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -46,13 +49,17 @@ async function derivarMAH(mek) {
 
 async function saveSession(token, vkKey) {
   const rawVK = await crypto.subtle.exportKey("raw", vkKey);
-  await chrome.storage.session.set({ sessionToken: token, vkHex: buf2hex(rawVK) });
+  await chrome.storage.session.set({ sessionToken: token, vkHex: buf2hex(rawVK), lastActivity: Date.now() });
 }
 
 async function restoreSession() {
   try {
-    const data = await chrome.storage.session.get(['sessionToken', 'vkHex']);
+    const data = await chrome.storage.session.get(['sessionToken', 'vkHex', 'lastActivity']);
     if (data.sessionToken && data.vkHex) {
+      if (data.lastActivity && Date.now() - data.lastActivity > INACTIVITY_MS) {
+        await chrome.storage.session.remove(['sessionToken', 'vkHex', 'lastActivity']);
+        return false;
+      }
       SESSION_TOKEN = data.sessionToken;
       LOCAL_VK = await crypto.subtle.importKey(
         "raw", hex2buf(data.vkHex), { name: "AES-GCM" }, true, ["encrypt", "decrypt"]
@@ -66,7 +73,28 @@ async function restoreSession() {
 async function clearSession() {
   SESSION_TOKEN = null;
   LOCAL_VK = null;
-  await chrome.storage.session.remove(['sessionToken', 'vkHex']);
+  clearTimeout(_inactivityTimer);
+  _inactivityTimer = null;
+  await chrome.storage.session.remove(['sessionToken', 'vkHex', 'lastActivity']);
+}
+
+function resetInactivityTimer() {
+  clearTimeout(_inactivityTimer);
+  if (!SESSION_TOKEN) return;
+  _inactivityTimer = setTimeout(async () => {
+    await clearSession();
+    lockVaultUI();
+    document.querySelector('[data-tab="auth"]').click();
+    showFeedback('loginFeedback', 'info', 'Sesión cerrada por inactividad (15 min).');
+    logLine('⏱️ Sesión cerrada por inactividad.');
+  }, INACTIVITY_MS);
+}
+
+function getEmailFromToken() {
+  if (!SESSION_TOKEN) return null;
+  try {
+    return JSON.parse(atob(SESSION_TOKEN.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).sub;
+  } catch { return null; }
 }
 
 async function sha1hex(str) {
@@ -195,6 +223,31 @@ function unlockVaultUI() {
   $('vaultUnlocked').style.display = 'flex';
   setStatus('online');
   $('tabVault').style.color = 'var(--accent2)';
+  const email = getEmailFromToken();
+  if (email) $('userEmailLabel').textContent = email;
+  resetInactivityTimer();
+}
+
+function lockVaultUI() {
+  $('vaultLocked').style.display   = '';
+  $('vaultUnlocked').style.display = 'none';
+  setStatus('offline');
+  $('tabVault').style.color = '';
+  clearTimeout(_inactivityTimer);
+  _inactivityTimer = null;
+}
+
+async function apiFetch(url, options = {}) {
+  const res = await fetch(url, options);
+  if (res.status === 401) {
+    await clearSession();
+    lockVaultUI();
+    document.querySelector('[data-tab="auth"]').click();
+    showFeedback('loginFeedback', 'err', 'Sesión expirada. Inicia sesión de nuevo.');
+    logLine('⚠️ Sesión expirada — inicia sesión de nuevo.');
+    throw new Error('Sesión expirada');
+  }
+  return res;
 }
 
 function escapeHtml(s) {
@@ -224,7 +277,6 @@ function setupEye(eyeId, inputId) {
 setupEye('eyeToggle',        'masterPass');
 setupEye('eyeToggleReg',      'regPass');
 setupEye('eyeSitePass',       'sitePass');
-setupEye('eyeSitePassConfirm','sitePassConfirm');
 
 $('sitePass').addEventListener('input', () => {
   checkBreachSite($('sitePass').value);
@@ -272,7 +324,6 @@ function applyDomain(domain) {
   $('domainBadge').classList.add('show');
   $('detectedSiteLabel').textContent = domain;
   $('detectedSite').style.display = 'flex';
-  $('confirmSiteLabel').textContent = domain;
   logLine(`🌐 Dominio detectado: ${domain}`);
   updateSaveSectionVisibility();
 }
@@ -298,7 +349,7 @@ chrome.storage.local.get('pendingDomain', ({ pendingDomain }) => {
 async function siteAlreadyInVault(domain) {
   if (!LOCAL_VK || !SESSION_TOKEN || !domain) return false;
   try {
-    const res = await fetch(`${API_URL}/vault`, {
+    const res = await apiFetch(`${API_URL}/vault`, {
       headers: { 'Authorization': `Bearer ${SESSION_TOKEN}` }
     });
     if (!res.ok) return false;
@@ -518,7 +569,7 @@ async function guardarItem() {
       { name:'AES-GCM', iv }, LOCAL_VK, encoder.encode(payload)
     );
 
-    const res = await fetch(`${API_URL}/vault`, {
+    const res = await apiFetch(`${API_URL}/vault`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -555,7 +606,7 @@ async function guardarItem() {
 $('btnDescargar').addEventListener('click', () => descargarBoveda());
 
 async function refrescarListaBoveda(silent = false) {
-  if (!ensureSecureApi('step2Feedback')) return;
+  if (!ensureSecureApi('listFeedback')) return;
   if (!LOCAL_VK || !SESSION_TOKEN) return;
   const btn  = $('btnDescargar');
   const list = $('itemsList');
@@ -569,7 +620,7 @@ async function refrescarListaBoveda(silent = false) {
   }
 
   try {
-    const res = await fetch(`${API_URL}/vault`, {
+    const res = await apiFetch(`${API_URL}/vault`, {
       headers: { 'Authorization': `Bearer ${SESSION_TOKEN}` }
     });
     if (!res.ok) throw new Error('No se pudo obtener la bóveda.');
@@ -579,29 +630,28 @@ async function refrescarListaBoveda(silent = false) {
     if (!silent) logLine(`ℹ️ ${items.length} ítem(s) encontrado(s).`);
 
     if (items.length === 0) {
+      _allVaultItems = [];
+      renderFilteredItems('');
       if (!silent) showFeedback('listFeedback','info','La bóveda está vacía.');
       return;
     }
 
+    _allVaultItems = [];
     for (const [i, item] of items.entries()) {
       try {
         const buf  = await crypto.subtle.decrypt(
           { name:'AES-GCM', iv: hex2buf(item.nonce) }, LOCAL_VK, hex2buf(item.encrypted_payload)
         );
         const text = decoder.decode(buf);
-        if (!silent) {
-          let logDesc = 'Ítem descifrado';
-          try {
-            const parsed = JSON.parse(text);
-            if (parsed.site) logDesc = `🔓 ${parsed.site}`;
-          } catch {}
-          logLine(logDesc);
-        }
-        renderItem(item.id, text, i * 70);
+        let site = '';
+        try { const parsed = JSON.parse(text); site = parsed.site || ''; } catch {}
+        _allVaultItems.push({ id: item.id, text, site });
+        if (!silent) logLine(site ? `🔓 ${site}` : 'Ítem descifrado');
       } catch {
         if (!silent) logLine(`❌ Error descifrando [${item.id}]`);
       }
     }
+    renderFilteredItems($('searchInput').value);
   } catch (err) {
     if (!silent) {
       showFeedback('listFeedback','err', err.message);
@@ -628,7 +678,7 @@ async function eliminarItem(id, site) {
 
   logLine(`⚙️ Eliminando credencial de ${site}...`);
   try {
-    const res = await fetch(`${API_URL}/vault/${id}`, {
+    const res = await apiFetch(`${API_URL}/vault/${id}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${SESSION_TOKEN}` }
     });
@@ -698,8 +748,20 @@ function renderItem(id, text, delay = 0) {
   list.appendChild(el);
 }
 
+function renderFilteredItems(filter = '') {
+  const list = $('itemsList');
+  list.innerHTML = '';
+  const q = filter.toLowerCase().trim();
+  const filtered = q
+    ? _allVaultItems.filter(item => item.site.toLowerCase().includes(q))
+    : _allVaultItems;
+  filtered.forEach((item, i) => renderItem(item.id, item.text, i * 70));
+}
+
 setupEye('eyeEditNew',     'editNewPass');
 setupEye('eyeEditConfirm', 'editNewPassConfirm');
+setupEye('eyeOldMaster',  'oldMasterPass');
+setupEye('eyeNewMaster',  'newMasterPass');
 
 function openEditModal(itemId, site) {
   $('editItemId').value = itemId;
@@ -764,7 +826,7 @@ async function actualizarItem() {
       { name: 'AES-GCM', iv }, LOCAL_VK, encoder.encode(payload)
     );
 
-    const res = await fetch(`${API_URL}/vault/${itemId}`, {
+    const res = await apiFetch(`${API_URL}/vault/${itemId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -800,23 +862,17 @@ function generarPassword() {
   const rnd = crypto.getRandomValues(new Uint8Array(16));
   const password = Array.from(rnd, b => chars[b % chars.length]).join('');
 
-  // Set the password field only (not the confirm field)
   setNativeValue($('sitePass'), password);
-  // Clear confirm field since a new password was generated
-  $('sitePassConfirm').value = '';
-  markInput($('sitePassConfirm'), null);
 
   // Show the confirm button
   $('btnConfirmarGenerada').style.display = 'flex';
   $('btnConfirmarGenerada').focus();
 }
 
-// "Use this password" confirmation button — auto-fills the confirm field
+// "Use this password" confirmation button
 $('btnConfirmarGenerada').addEventListener('click', () => {
   const pass = $('sitePass').value;
   if (!pass) return;
-  setNativeValue($('sitePassConfirm'), pass);
-  markInput($('sitePassConfirm'), 'success');
   $('btnConfirmarGenerada').style.display = 'none';
   logLine('✅ Contraseña generada confirmada.');
 });
@@ -826,6 +882,108 @@ function setNativeValue(input, value) {
   setter.call(input, value);
   input.dispatchEvent(new Event('input', { bubbles: true }));
 }
+
+// ── CAMBIAR CONTRASEÑA MAESTRA ────────────────────────────────
+$('btnCambiarPass').addEventListener('click', () => {
+  $('cambiarPassOverlay').classList.add('show');
+  hideFeedback('cambiarPassFeedback');
+  $('oldMasterPass').value = '';
+  $('newMasterPass').value = '';
+  $('newMasterPassConfirm').value = '';
+});
+
+$('btnCambiarPassCancelar').addEventListener('click', () => {
+  $('cambiarPassOverlay').classList.remove('show');
+});
+
+$('btnCambiarPassGuardar').addEventListener('click', cambiarPasswordMaestra);
+
+async function cambiarPasswordMaestra() {
+  const btn   = $('btnCambiarPassGuardar');
+  const email = getEmailFromToken();
+  if (!email || !LOCAL_VK) { showFeedback('cambiarPassFeedback', 'err', 'Sesión inválida.'); return; }
+
+  const oldPass = $('oldMasterPass').value;
+  const newPass = $('newMasterPass').value;
+  const confirm = $('newMasterPassConfirm').value;
+
+  if (!oldPass || !newPass || !confirm) {
+    showFeedback('cambiarPassFeedback', 'err', 'Rellena todos los campos.');
+    return;
+  }
+  if (newPass !== confirm) {
+    showFeedback('cambiarPassFeedback', 'err', 'Las contraseñas nuevas no coinciden.');
+    return;
+  }
+  if (newPass === oldPass) {
+    showFeedback('cambiarPassFeedback', 'err', 'La nueva contraseña debe ser diferente a la actual.');
+    return;
+  }
+
+  setLoading(btn, true);
+  hideFeedback('cambiarPassFeedback');
+
+  try {
+    const resSalt = await fetch(`${API_URL}/salt/${email}`);
+    if (!resSalt.ok) throw new Error('No se pudo obtener el salt.');
+    const { client_salt } = await resSalt.json();
+
+    const oldMek = await derivarMEK(oldPass, email + client_salt);
+    const oldMah = await derivarMAH(oldMek);
+
+    const newSalt = buf2hex(crypto.getRandomValues(new Uint8Array(32)));
+    const newMek  = await derivarMEK(newPass, email + newSalt);
+    const newMah  = await derivarMAH(newMek);
+
+    const rawVK  = await crypto.subtle.exportKey("raw", LOCAL_VK);
+    const iv     = crypto.getRandomValues(new Uint8Array(12));
+    const encVK  = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, newMek, rawVK);
+    const newEncryptedVk = buf2hex(iv) + ':' + buf2hex(encVK);
+
+    const res = await apiFetch(`${API_URL}/users/password`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SESSION_TOKEN}` },
+      body: JSON.stringify({ old_mah: oldMah, new_mah: newMah, new_encrypted_vk: newEncryptedVk, new_client_salt: newSalt }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Error al cambiar la contraseña.');
+    }
+
+    showFeedback('cambiarPassFeedback', 'ok', '✅ Contraseña maestra actualizada.');
+    logLine('✅ Contraseña maestra cambiada correctamente.');
+    setTimeout(() => $('cambiarPassOverlay').classList.remove('show'), 1500);
+
+  } catch (err) {
+    showFeedback('cambiarPassFeedback', 'err', err.message);
+    logLine(`❌ ${err.message}`);
+  } finally {
+    setLoading(btn, false);
+  }
+}
+
+// ── LOGOUT ────────────────────────────────────────────────────
+$('btnLogout').addEventListener('click', async () => {
+  await clearSession();
+  lockVaultUI();
+  _allVaultItems = [];
+  $('itemsList').innerHTML = '';
+  $('searchInput').value = '';
+  $('userEmailLabel').textContent = '—';
+  document.querySelector('[data-tab="auth"]').click();
+  logLine('🔒 Sesión cerrada.');
+});
+
+// ── BÚSQUEDA ──────────────────────────────────────────────────
+$('searchInput').addEventListener('input', () => {
+  renderFilteredItems($('searchInput').value);
+});
+
+// ── INACTIVIDAD — resetear timer en cualquier interacción ─────
+['click', 'keydown'].forEach(evt =>
+  document.addEventListener(evt, () => { if (SESSION_TOKEN) resetInactivityTimer(); }, { passive: true })
+);
 
 (async () => {
   const restored = await restoreSession();
