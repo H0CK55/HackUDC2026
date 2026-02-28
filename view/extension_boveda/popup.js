@@ -617,6 +617,7 @@ function renderItem(id, text, delay = 0) {
       ${displaySite}
       <span class="v-item-pass" data-pass="${escapeHtml(password)}" title="Clic para revelar">${maskedPass}</span>
     </span>
+    <button class="v-item-edit" title="Editar contraseña">✏️</button>
     <button class="v-item-copy" title="Copiar contraseña">⎘</button>
   `;
 
@@ -630,6 +631,11 @@ function renderItem(id, text, delay = 0) {
     passEl.style.color = revealed ? 'var(--accent2)' : '';
   });
 
+  // Editar contraseña
+  el.querySelector('.v-item-edit').addEventListener('click', () => {
+    openEditModal(id, site || text);
+  });
+
   // Copiar contraseña
   el.querySelector('.v-item-copy').addEventListener('click', async () => {
     await navigator.clipboard.writeText(password);
@@ -640,4 +646,99 @@ function renderItem(id, text, delay = 0) {
   });
 
   list.appendChild(el);
+}
+/* ─────────────────────────────────────────────
+   EDITAR CONTRASEÑA — MODAL
+───────────────────────────────────────────── */
+setupEye('eyeEditNew',     'editNewPass');
+setupEye('eyeEditConfirm', 'editNewPassConfirm');
+
+function openEditModal(itemId, site) {
+  $('editItemId').value = itemId;
+  $('editSiteLabel').textContent = `🌐 ${site}`;
+  $('editNewPass').value = '';
+  $('editNewPassConfirm').value = '';
+  hideFeedback('editFeedback');
+  markInput($('editNewPass'), null);
+  markInput($('editNewPassConfirm'), null);
+  $('editOverlay').classList.add('show');
+  $('editNewPass').focus();
+}
+
+function closeEditModal() {
+  $('editOverlay').classList.remove('show');
+}
+
+$('btnEditCancelar').addEventListener('click', closeEditModal);
+$('editOverlay').addEventListener('click', e => {
+  if (e.target === $('editOverlay')) closeEditModal();
+});
+
+$('btnEditGuardar').addEventListener('click', actualizarItem);
+$('editNewPassConfirm').addEventListener('keydown', e => { if (e.key === 'Enter') actualizarItem(); });
+
+async function actualizarItem() {
+  if (!LOCAL_VK || !SESSION_TOKEN) {
+    showFeedback('editFeedback', 'err', 'Sesión expirada. Inicia sesión de nuevo.');
+    return;
+  }
+  const btn     = $('btnEditGuardar');
+  const itemId  = $('editItemId').value;
+  const site    = $('editSiteLabel').textContent.replace('🌐 ', '').trim();
+  const newPass = $('editNewPass').value;
+  const confirm = $('editNewPassConfirm').value;
+
+  hideFeedback('editFeedback');
+  markInput($('editNewPass'), null);
+  markInput($('editNewPassConfirm'), null);
+
+  if (!newPass) {
+    showFeedback('editFeedback', 'err', 'Introduce la nueva contraseña.');
+    markInput($('editNewPass'), 'error');
+    shake($('editNewPass').closest('.v-field'));
+    return;
+  }
+  if (newPass !== confirm) {
+    showFeedback('editFeedback', 'err', 'Las contraseñas no coinciden.');
+    markInput($('editNewPassConfirm'), 'error');
+    shake($('editNewPassConfirm').closest('.v-field'));
+    return;
+  }
+
+  setLoading(btn, true);
+  logLine(`⚙️ Actualizando credencial de ${site}...`);
+
+  try {
+    const payload = JSON.stringify({ site, password: newPass });
+    const iv      = crypto.getRandomValues(new Uint8Array(12));
+    const cifrado = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv }, LOCAL_VK, encoder.encode(payload)
+    );
+
+    const res = await fetch(`${API_URL}/vault/${itemId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SESSION_TOKEN}`
+      },
+      body: JSON.stringify({ encrypted_payload: buf2hex(cifrado), nonce: buf2hex(iv) })
+    });
+
+    if (!res.ok) throw new Error('Error al actualizar en el servidor.');
+
+    markInput($('editNewPass'), 'success');
+    showFeedback('editFeedback', 'ok', 'Contraseña actualizada correctamente.');
+    logLine(`✅ Credencial de ${site} actualizada.`);
+
+    setTimeout(() => {
+      closeEditModal();
+      refrescarListaBoveda(true);
+    }, 1000);
+
+  } catch (err) {
+    showFeedback('editFeedback', 'err', err.message);
+    logLine(`❌ ${err.message}`);
+  } finally {
+    setLoading(btn, false);
+  }
 }
