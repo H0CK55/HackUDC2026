@@ -70,6 +70,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === 'GET_CREDENTIALS') {
     _getCredentials(message.hostname).then(sendResponse);
-    return true; // mantener canal abierto para respuesta asíncrona
+    return true;
   }
+
 });

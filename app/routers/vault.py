@@ -74,31 +74,3 @@ async def add_vault_item(
     logger.info("VAULT_ADD_OK ip=%s email=%s item_id=%d", request.client.host, email, new_item.id)
     return {"msg": "Ítem guardado permanentemente", "id": new_item.id}
 
-
-@router.put("/{item_id}/") # Añade esta línea extra
-async def update_vault_item(
-    item_id: int,
-    item: VaultItem,
-    authorization: Optional[str] = Header(None),
-    db: Session = Depends(get_db)
-):
-    # 1. Validar el token y obtener el usuario
-    jwt_token = _get_token(authorization=authorization)
-    email = get_current_user(jwt_token)
-
-    # 2. Buscar el ítem en la base de datos que pertenezca a ese ID y a ese usuario
-    db_item = db.query(VaultItemDB).filter(
-        VaultItemDB.id == item_id, 
-        VaultItemDB.user_email == email
-    ).first()
-
-    # 3. Si no existe, lanzar 404
-    if not db_item:
-        raise HTTPException(status_code=404, detail="El secreto no existe o no tienes permiso")
-
-    # 4. Actualizar los campos cifrados
-    db_item.encrypted_payload = item.encrypted_payload
-    db_item.nonce = item.nonce
-
-    db.commit()
-    return {"msg": "Ítem actualizado correctamente", "id": item_id}
