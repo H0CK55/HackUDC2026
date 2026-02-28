@@ -22,4 +22,25 @@ async def register(user: UserRegister, db: Session = Depends(get_db)):
     db.commit()
     return {"msg": "Usuario registrado exitosamente"}
 
-# ... añadir el endpoint de salt y login aquí
+@router.get("/salt/{email}")
+async def get_salt(email: str, db: Session = Depends(get_db)):
+    user = db.query(UserDB).filter(UserDB.email == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    return {"client_salt": user.client_salt}
+
+@router.post("/login")
+async def login(user: UserLogin, db: Session = Depends(get_db)):
+    db_user = db.query(UserDB).filter(UserDB.email == user.email).first()
+    if not db_user:
+        raise HTTPException(status_code=401, detail="Credenciales incorrectas")
+    
+    if not verify_mah(user.mah, db_user.mah_hash):
+        raise HTTPException(status_code=401, detail="Credenciales incorrectas")
+    
+    access_token = create_access_token(data={"sub": user.email})
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "encrypted_vk": db_user.encrypted_vk
+    }
