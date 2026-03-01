@@ -10,7 +10,7 @@ Imagina que tienes una caja fuerte. Pero en lugar de darle la llave al banco par
 
 Eso es VoidVault.
 
-Es una **extensión de Chrome** que actúa como gestor de contraseñas, pero con una diferencia clave respecto a soluciones como LastPass o 1Password: **el servidor nunca ve tus contraseñas**. Todo el cifrado ocurre dentro de tu navegador, usando tu dispositivo como única fuente de verdad. Si alguien hackeara nuestra base de datos, solo encontraría datos cifrados inútiles.
+Es una **extensión de Chrome** que actúa como gestor de contraseñas. Todo el cifrado ocurre dentro de tu navegador, usando tu dispositivo como única fuente de verdad. Si alguien hackeara nuestra base de datos, solo encontraría datos cifrados inútiles.
 
 ### El problema que resuelve
 
