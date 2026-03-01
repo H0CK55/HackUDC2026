@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Create a .env file for local development with secure defaults.
-# Usage: ./scripts/init_env.sh [--force]
 
 set -euo pipefail
 
@@ -20,11 +18,8 @@ fi
 
 echo "Generating .env at $ENV_FILE"
 
-# Make sure the file is created with restrictive permissions by default
-# (umask 077 -> files created as 600). We still chmod later to be explicit.
 umask 077
 
-# SECRET_KEY: 32-byte hex
 SECRET_KEY=$(openssl rand -hex 32 2>/dev/null || python - <<'PY'
 import os,sys
 print(os.urandom(32).hex())
