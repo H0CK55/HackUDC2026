@@ -67,7 +67,32 @@
   observer.observe(document.documentElement, { childList: true, subtree: true });
   scan();
 
+  function generateSecurePassword() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%&*?-_';
+    const rnd = crypto.getRandomValues(new Uint8Array(16));
+    return Array.from(rnd, b => chars[b % chars.length]).join('');
+  }
+
+  function findConfirmPasswordField(input) {
+    const container = input.closest('form') || document.body;
+    const all = Array.from(container.querySelectorAll('input[type="password"]'));
+    const idx = all.indexOf(input);
+    if (idx !== -1 && idx < all.length - 1) return all[idx + 1];
+    return null;
+  }
+
   function handleBadgeClick(input) {
+    const confirmField = findConfirmPasswordField(input);
+
+    if (confirmField) {
+      const password = generateSecurePassword();
+      fillPassword(input, password);
+      fillPassword(confirmField, password);
+      const hostname = location.hostname.replace(/^www\./, '');
+      showSaveToast(hostname, password);
+      return;
+    }
+
     chrome.runtime.sendMessage(
       { type: 'GET_CREDENTIALS', hostname: location.hostname },
       (response) => {
