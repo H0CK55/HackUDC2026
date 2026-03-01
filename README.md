@@ -14,7 +14,7 @@ Es una **extensión de Chrome** que actúa como gestor de contraseñas. Todo el 
 
 ### El problema que resuelve
 
-Los gestores de contraseñas tradicionales requieren que confíes ciegamente en el proveedor. Si su servidor es comprometido, o si ellos mismos actúan de mala fe, tus contraseñas están en riesgo. VoidVault elimina esa necesidad de confianza: **zero-knowledge** significa que nosotros técnicamente *no podemos* ver tus contraseñas aunque quisiéramos.
+Algunos gestores de contraseñas tradicionales requieren que confíes ciegamente en el proveedor. Si su servidor es comprometido, o si ellos mismos actúan de mala fe, tus contraseñas están en riesgo. VoidVault elimina esa necesidad de confianza: **zero-knowledge** significa que nosotros técnicamente *no podemos* ver tus contraseñas aunque quisiéramos.
 
 ### Cómo lo usa una persona normal
 
