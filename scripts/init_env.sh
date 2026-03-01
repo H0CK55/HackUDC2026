@@ -48,7 +48,6 @@ EOF
 echo ".env created. Keep it secret and do not commit it."
 echo "Run: source .env (or the app will load it via python-dotenv automatically)"
 
-# Ensure explicit restrictive permissions in case umask was changed
 chmod 600 "$ENV_FILE" || true
 
 exit 0
