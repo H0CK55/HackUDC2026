@@ -273,6 +273,11 @@ function isValidEmail(email) {
   return /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(email);
 }
 
+function friendlyError(err) {
+  if (err instanceof TypeError) return 'No se pudo conectar con el servidor.';
+  return err.message || 'Error desconocido.';
+}
+
 function parseApiError(e, fallback) {
   if (!e) return fallback;
   if (typeof e.detail === 'string') return e.detail;
@@ -483,7 +488,7 @@ async function iniciarSesion() {
 
   } catch (err) {
     markInput($('masterPass'), 'error');
-    const msg = err.message || 'No se pudo conectar con el servidor.';
+    const msg = friendlyError(err);
     showFeedback('loginFeedback','err', msg);
     shake($('masterPassField'));
     shake($('loginFeedback'));
@@ -570,9 +575,10 @@ async function registrar() {
     }, 1200);
 
   } catch (err) {
-    showFeedback('regFeedback','err', err.message);
+    const msg = friendlyError(err);
+    showFeedback('regFeedback','err', msg);
     shake($('panel-register'));
-    logLine(`❌ ${err.message}`);
+    logLine(`❌ ${msg}`);
   } finally {
     setLoading(btn, false);
   }
@@ -641,9 +647,10 @@ async function guardarItem() {
     }, 1500);
 
   } catch (err) {
-    showFeedback('step1Feedback','err', err.message);
+    const msg = friendlyError(err);
+    showFeedback('step1Feedback','err', msg);
     shake($('sitePass').closest('.v-field'));
-    logLine(`❌ ${err.message}`);
+    logLine(`❌ ${msg}`);
   } finally {
     setLoading(btn, false);
   }
@@ -700,8 +707,9 @@ async function refrescarListaBoveda(silent = false) {
     renderFilteredItems($('searchInput').value);
   } catch (err) {
     if (!silent) {
-      showFeedback('listFeedback','err', err.message);
-      logLine(`❌ ${err.message}`);
+      const msg = friendlyError(err);
+      showFeedback('listFeedback','err', msg);
+      logLine(`❌ ${msg}`);
     }
   } finally {
     if (!silent) setLoading(btn, false);
@@ -759,8 +767,9 @@ $('btnDeleteConfirmar').addEventListener('click', async () => {
     refrescarListaBoveda(true);
     updateSaveSectionVisibility();
   } catch (err) {
-    logLine(`❌ ${err.message}`);
-    showFeedback('listFeedback', 'err', err.message);
+    const msg = friendlyError(err);
+    logLine(`❌ ${msg}`);
+    showFeedback('listFeedback', 'err', msg);
     closeDeleteModal();
   } finally {
     setLoading(btn, false);
@@ -927,8 +936,9 @@ async function actualizarItem() {
     }, 1000);
 
   } catch (err) {
-    showFeedback('editFeedback', 'err', err.message);
-    logLine(`❌ ${err.message}`);
+    const msg = friendlyError(err);
+    showFeedback('editFeedback', 'err', msg);
+    logLine(`❌ ${msg}`);
   } finally {
     setLoading(btn, false);
   }
@@ -1024,8 +1034,9 @@ async function cambiarPasswordMaestra() {
     setTimeout(() => $('cambiarPassOverlay').classList.remove('show'), 1500);
 
   } catch (err) {
-    showFeedback('cambiarPassFeedback', 'err', err.message);
-    logLine(`❌ ${err.message}`);
+    const msg = friendlyError(err);
+    showFeedback('cambiarPassFeedback', 'err', msg);
+    logLine(`❌ ${msg}`);
   } finally {
     setLoading(btn, false);
   }
